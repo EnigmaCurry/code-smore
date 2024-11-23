@@ -22,6 +22,8 @@ jobs:
       - name: Install ALSA development libraries for aarch64
         if: matrix.platform.target == 'aarch64-unknown-linux-gnu'
         run: |
+          sudo sed -i 's|http://security.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports|g' /etc/apt/sources.list
+          sudo apt-get update
           sudo dpkg --add-architecture arm64
           sudo apt-get update
           sudo apt-get install -y libasound2-dev:arm64
