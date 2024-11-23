@@ -21,8 +21,8 @@ jobs:
           
       - name: Update Rust stable
         run: rustup toolchain install stable
-      # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
 
+      # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
       - name: Prepare Cargo.lock for caching (ignore morse-quest version)
         run: |
           PROJECT_NAME=$(grep '^name' Cargo.toml | sed 's/name = "\(.*\)"/\1/')
@@ -116,8 +116,8 @@ jobs:
           #   name: Darwin-arm64
           #   command: build
           - release_for: Windows-x86_64
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
+            os: ubuntu-latest
+            target: x86_64-pc-windows-gnu
             bin: morse-quest.exe
             name: Windows-x86_64
             command: build
