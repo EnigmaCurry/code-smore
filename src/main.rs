@@ -37,7 +37,7 @@ fn main() {
     // Global arguments
     let dot_duration = matches.get_one::<u32>("dot");
     let wpm = matches.get_one::<u32>("wpm");
-    let tone_frequency: f32 = *matches.get_one::<f32>("tone").unwrap();
+    let tone_freq: f32 = *matches.get_one::<f32>("tone").unwrap();
 
     // Calculate dot duration if not explicitly provided
     let dot_duration = match (dot_duration, wpm) {
@@ -60,13 +60,16 @@ fn main() {
             let char_set = sub_matches
                 .get_one::<String>("characters")
                 .expect("Missing --character arg default");
-            fecr_quiz::start_quiz(*trials, char_set);
+            let cheat = sub_matches
+                .get_one::<bool>("cheat")
+                .expect("Missing cheat arg default");
+            fecr_quiz::start_quiz(*trials, char_set, dot_duration, tone_freq, *cheat);
             0
         }
         Some(("test-sound", _sub_matches)) => {
             let message = "If sound is working, you should hear this test message now.";
             println!("{}", message);
-            morse::play(message, dot_duration, tone_frequency);
+            morse::play(message, dot_duration, tone_freq);
             0
         }
         Some(("completions", sub_matches)) => {

@@ -60,6 +60,11 @@ pub fn app() -> Command {
                         .long("trials")
                         .default_value("128")
                         .value_parser(value_parser!(u32)),
+                )
+                .arg(
+                    Arg::new("cheat")
+                        .long("cheat")
+                        .action(clap::ArgAction::SetTrue),
                 ),
         )
         .subcommand(Command::new("test-sound").about("Test that sound is working"))

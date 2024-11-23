@@ -106,8 +106,8 @@ fn encode_morse(text: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)
     ];
 
     let mut tones = Vec::new();
-
-    for word in text.split_whitespace() {
+    let words: Vec<&str> = text.split_whitespace().collect();
+    for (i, word) in words.iter().enumerate() {
         for ch in word.chars() {
             if let Some(morse) = morse_map.iter().find_map(|&(c, m)| {
                 if c == ch.to_ascii_uppercase() {
@@ -128,7 +128,9 @@ fn encode_morse(text: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)
                 tones.push((0.0, char_gap_duration)); // Gap between characters
             }
         }
-        tones.push((0.0, word_gap_duration)); // Gap between words
+        if i < words.len() - 1 {
+            tones.push((0.0, word_gap_duration)); // Gap between words (not after the last word)
+        }
     }
 
     tones
