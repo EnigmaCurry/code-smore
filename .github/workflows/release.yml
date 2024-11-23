@@ -168,10 +168,15 @@ jobs:
         key: ${{ runner.os }}-cargo-registry-${{ hashFiles('/tmp/Cargo.lock.no-version') }}
         restore-keys: |
           ${{ runner.os }}-cargo-registry-
-      
-    # # Verify if the crate is ready to be published:
-    # - name: Check crate is ready for publishing
-    #   run: cargo package
+
+    - name: Install libasound2-dev
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libasound2-dev
+          
+    # Verify if the crate is ready to be published:
+    - name: Check crate is ready for publishing
+      run: cargo package
       
     # Publish the crate to crates.io
     - name: Publish to crates.io
