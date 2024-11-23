@@ -3,13 +3,11 @@ use rand::prelude::SliceRandom;
 
 use crossterm::{
     cursor,
-    event::{self, read, Event, KeyCode},
+    event::{self, Event, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode},
     terminal::{Clear, ClearType},
     ExecutableCommand,
 };
-use rand::distributions::Alphanumeric;
-use rand::Rng;
 use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
 use textwrap::wrap;
