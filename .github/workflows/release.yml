@@ -152,11 +152,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Install libasound2-dev (Linux only)
-      if: matrix.platform.os == 'ubuntu-latest'
-      run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev
     - name: Update Rust stable
       run: rustup toolchain install stable
     # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
@@ -174,9 +169,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-registry-
       
-    # Verify if the crate is ready to be published:
-    - name: Check crate is ready for publishing
-      run: cargo package
+    # # Verify if the crate is ready to be published:
+    # - name: Check crate is ready for publishing
+    #   run: cargo package
       
     # Publish the crate to crates.io
     - name: Publish to crates.io
