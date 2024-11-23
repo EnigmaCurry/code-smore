@@ -1,0 +1,4 @@
+/target
+/_test
+/*.profraw
+/*.profdata

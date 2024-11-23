@@ -1,0 +1,105 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Update Rust stable
+      run: rustup toolchain install stable
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
+    - name: Prepare Cargo.lock for caching (ignore ${APP} version)
+      run: |
+        PROJECT_NAME=$(grep '^name' Cargo.toml | sed 's/name = "\(.*\)"/\1/')
+        awk '/\[\[package\]\]/{p=0} /name = "'"${PROJECT_NAME}"'"/{p=1} p && /version = /{next} 1' Cargo.lock > Cargo.lock.no-version
+
+    # Cache cargo registry (source code artifacts only):
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock.no-version') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    # Restore target cache
+    - name: Restore third-party dependencies cache
+      uses: actions/cache@v3
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-deps-${{ hashFiles('**/Cargo.lock.no-version') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-deps-
+
+    # Install cargo-binstall
+    - name: Install cargo-binstall
+      run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+    # Install Just using cargo-binstall
+    - name: Install Just
+      run: cargo binstall --no-confirm just
+
+    - name: Install other dependencies listed in Justfile (bin-deps)
+      run: just bin-deps
+
+    - name: Build
+      run: just build --release
+
+    - name: Run tests
+      run: just test --release
+
+    - name: Run coverage report
+      run: just test-coverage --release && ls -lha ./target/llvm-cov/html
+
+    - name: Extract project information
+      id: project_info
+      run: |
+        # Get cargo project name
+        project_name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+        echo "PROJECT_NAME=$project_name" >> $GITHUB_ENV
+        
+        # Get current branch name
+        branch_name=${GITHUB_REF##*/}
+        echo "BRANCH_NAME=$branch_name" >> $GITHUB_ENV
+        
+        # Get commit SHA and URL
+        commit_sha=$GITHUB_SHA
+        commit_url="https://github.com/${{ github.repository }}/commit/${commit_sha}"
+        echo "COMMIT_SHA=$commit_sha" >> $GITHUB_ENV
+        echo "COMMIT_URL=$commit_url" >> $GITHUB_ENV
+
+    - name: Inject meta information into index.html
+      run: |
+        project_name="$PROJECT_NAME"
+        branch_name="$BRANCH_NAME"
+        commit_sha="$COMMIT_SHA"
+        commit_url="$COMMIT_URL"
+        # Insert meta information at the end of the <body> in the HTML file
+        sed -i "/<\/body>/i <div style=\"position:fixed;bottom:10px;left:10px;font-size:12px;color:#666\">Project: ${project_name} | Branch: ${branch_name} | <a href=\"${commit_url}\">Commit: ${commit_sha}</a></div>" ./target/llvm-cov/html/index.html
+
+    - name: Publish coverage report to github pages
+      if: github.ref == 'refs/heads/master'
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./target/llvm-cov/html
+        destination_dir: coverage/master
+      
+    # Remove project-specific artifacts from target, to not invalidate the cache:
+    - name: Remove project-specific artifacts
+      run: |
+        PROJECT_NAME=$(grep '^name' Cargo.toml | sed 's/name = "\(.*\)"/\1/')
+        find target/ | grep "${PROJECT_NAME}" | xargs -iXX rm -rf XX

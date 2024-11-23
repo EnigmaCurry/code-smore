@@ -1,0 +1,175 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    name: Build - ${{ matrix.platform.release_for }}
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update Rust stable
+        run: rustup toolchain install stable
+      # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
+
+      - name: Prepare Cargo.lock for caching (ignore ${APP} version)
+        run: |
+          PROJECT_NAME=$(grep '^name' Cargo.toml | sed 's/name = "\(.*\)"/\1/')
+          awk '/\[\[package\]\]/{p=0} /name = "'"${PROJECT_NAME}"'"/{p=1} p && /version = /{next} 1' Cargo.lock > Cargo.lock.no-version
+      # Cache cargo registry (source code artifacts only):
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock.no-version') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Get version from cargo.toml
+        uses: SebRollen/toml-action@v1.2.0
+        id: cargo_version
+        with:
+          file: 'Cargo.toml'
+          field: 'package.version'
+
+      - name: Get the tag of current release
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> ${GITHUB_OUTPUT}
+
+      - name: Verify package version is equal to tag version
+        if: ${{ steps.cargo_version.outputs.value != steps.get_version.outputs.VERSION }}
+        run: |
+          echo "${{ steps.cargo_version.outputs.value }}"
+          echo "${{ steps.get_version.outputs.VERSION }}"
+          exit 1
+
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          # cross-version: v0.2.5
+          command: ${{ matrix.platform.command }}
+          target: ${{ matrix.platform.target }}
+          args: "--bin ${{ matrix.platform.bin }} --locked --release"
+          strip: true
+
+      - name: move binary path
+        run: mv target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} .
+
+      - name: Package as archive
+        shell: bash
+        run: |
+          tar czvf ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz \
+                ${{ matrix.platform.bin }}
+        if: startsWith( github.ref, 'refs/tags/v' )
+      # - name: Generate SHA-256
+      #   run: shasum -a 256 ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz > ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz
+          path: ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz
+
+      # - name: Upload digests
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz.sha256
+      #     path: ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz.sha256
+
+    strategy:
+      matrix:
+        platform:
+          - release_for: Linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            bin: ${APP}
+            name: Linux-x86_64
+            command: build
+          - release_for: Linux-aarch64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            bin: ${APP}
+            name: Linux-aarch64
+            command: build
+          - release_for: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+            bin: ${APP}
+            name: Darwin-x86_64
+            command: build
+          - release_for: macOS-arm64
+            os: macOS-latest
+            target: aarch64-apple-darwin
+            bin: ${APP}
+            name: Darwin-arm64
+            command: build
+          # - release_for: Windows-x86_64
+          #   os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   bin: ${APP}.exe
+          #   name: Windows-x86_64
+          #   command: build
+          # - release_for: FreeBSD-x86_64
+          #   os: ubuntu-latest
+          #   target: x86_64-unknown-freebsd
+          #   bin: ${APP}
+          #   name: FreeBSD-x86_64
+          #   command: build
+
+  release:
+    name: Release - ${{ matrix.platform.release_for }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/download-artifact@v4
+
+    # Release to github:
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/v')
+      with:
+        files: |
+          ${APP}-v*.tar.gz/${APP}-v*.tar.gz
+
+  publish:
+    name: Publish crate
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Update Rust stable
+      run: rustup toolchain install stable
+
+    
+    # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
+    - name: Prepare Cargo.lock for caching (ignore ${APP} version)
+      run: |
+        PROJECT_NAME=$(grep '^name' Cargo.toml | sed 's/name = "\(.*\)"/\1/')
+        awk '/\[\[package\]\]/{p=0} /name = "'"${PROJECT_NAME}"'"/{p=1} p && /version = /{next} 1' Cargo.lock > /tmp/Cargo.lock.no-version
+
+    # Cache cargo registry (source code artifacts only):
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('/tmp/Cargo.lock.no-version') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+      
+    # Verify if the crate is ready to be published:
+    - name: Check crate is ready for publishing
+      run: cargo package
+      
+    # Publish the crate to crates.io
+    - name: Publish to crates.io
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      run: cargo publish --token $CARGO_REGISTRY_TOKEN
