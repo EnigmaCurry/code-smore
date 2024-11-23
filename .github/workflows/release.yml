@@ -71,13 +71,19 @@ jobs:
           else
             mv target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} .
           fi
-
+          
       - name: Package as archive
-        shell: bash
         run: |
-          tar czvf ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz \
-                ${{ matrix.platform.bin }}
+          if [[ "${{ matrix.platform.target }}" == *"-windows-"* ]]; then
+             tar czvf ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz \
+                ${{ matrix.platform.bin }}.exe
+
+          else
+              tar czvf ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz \
+                ${{ matrix.platform.bin }}      
+          fi
         if: startsWith( github.ref, 'refs/tags/v' )
+        
       # - name: Generate SHA-256
       #   run: shasum -a 256 ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz > ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz.sha256
 
