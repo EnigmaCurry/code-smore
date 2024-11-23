@@ -18,6 +18,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
+
         
       - name: Update Rust stable
         run: rustup toolchain install stable
@@ -151,10 +152,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+    - name: Install libasound2-dev (Linux only)
+      if: matrix.platform.os == 'ubuntu-latest'
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
     - name: Update Rust stable
       run: rustup toolchain install stable
-
-    
     # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
     - name: Prepare Cargo.lock for caching (ignore morse-quest version)
       run: |
