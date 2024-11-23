@@ -18,6 +18,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
+
+      - name: Install ALSA development libraries for aarch64
+        if: matrix.platform.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev:arm64
           
       - name: Update Rust stable
         run: rustup toolchain install stable
