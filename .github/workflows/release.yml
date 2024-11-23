@@ -18,8 +18,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
-
-        
+          
       - name: Update Rust stable
         run: rustup toolchain install stable
       # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
@@ -98,12 +97,12 @@ jobs:
             bin: morse-quest
             name: Linux-x86_64
             command: build
-          # - release_for: Linux-aarch64
-          #   os: ubuntu-latest
-          #   target: aarch64-unknown-linux-gnu
-          #   bin: morse-quest
-          #   name: Linux-aarch64
-          #   command: build
+          - release_for: Linux-aarch64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            bin: morse-quest
+            name: Linux-aarch64
+            command: build
           # - release_for: macOS-x86_64
           #   os: macOS-latest
           #   target: x86_64-apple-darwin
@@ -116,12 +115,12 @@ jobs:
           #   bin: morse-quest
           #   name: Darwin-arm64
           #   command: build
-          # - release_for: Windows-x86_64
-          #   os: windows-latest
-          #   target: x86_64-pc-windows-msvc
-          #   bin: morse-quest.exe
-          #   name: Windows-x86_64
-          #   command: build
+          - release_for: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: morse-quest.exe
+            name: Windows-x86_64
+            command: build
           # - release_for: FreeBSD-x86_64
           #   os: ubuntu-latest
           #   target: x86_64-unknown-freebsd
