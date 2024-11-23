@@ -64,6 +64,7 @@ pub fn app() -> Command {
                 .arg(
                     Arg::new("cheat")
                         .long("cheat")
+                        .help("Print the text character to the screen")
                         .action(clap::ArgAction::SetTrue),
                 ),
         )

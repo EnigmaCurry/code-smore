@@ -88,6 +88,13 @@ The FECR quiz will examine your skills at recognizing single
 characters from the given set (the full alphanumeric set is used by
 default if not provided).
 
+The quiz supports these optional arguments:
+
+```
+      --trials <trials>     [default: 128]
+      --cheat               Print the text character to the screen
+```
+
 ## Development
 
 See [DEVELOPMENT.md](DEVELOPMENT.md)
