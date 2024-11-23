@@ -19,14 +19,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
 
-      - name: Install ALSA development libraries for aarch64
-        if: matrix.platform.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo dpkg --add-architecture arm64
-          sudo sed -i 's|http://security.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports|g' /etc/apt/sources.list
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev:arm64
-          
       - name: Update Rust stable
         run: rustup toolchain install stable
 
@@ -105,12 +97,12 @@ jobs:
             bin: morse-quest
             name: Linux-x86_64
             command: build
-          - release_for: Linux-aarch64
-            os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            bin: morse-quest
-            name: Linux-aarch64
-            command: build
+          # - release_for: Linux-aarch64
+          #   os: ubuntu-latest
+          #   target: aarch64-unknown-linux-gnu
+          #   bin: morse-quest
+          #   name: Linux-aarch64
+          #   command: build
           # - release_for: macOS-x86_64
           #   os: macOS-latest
           #   target: x86_64-apple-darwin
@@ -126,7 +118,7 @@ jobs:
           - release_for: Windows-x86_64
             os: ubuntu-latest
             target: x86_64-pc-windows-gnu
-            bin: morse-quest.exe
+            bin: morse-quest
             name: Windows-x86_64
             command: build
           # - release_for: FreeBSD-x86_64
