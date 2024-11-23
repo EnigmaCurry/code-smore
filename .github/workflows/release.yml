@@ -64,8 +64,13 @@ jobs:
           args: "--bin ${{ matrix.platform.bin }} --locked --release"
           strip: true
 
-      - name: move binary path
-        run: mv target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} .
+      - name: Move binary path
+        run: |
+          if [[ "${{ matrix.platform.target }}" == *"-windows-"* ]]; then
+            mv target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.exe .
+          else
+            mv target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} .
+          fi
 
       - name: Package as archive
         shell: bash
