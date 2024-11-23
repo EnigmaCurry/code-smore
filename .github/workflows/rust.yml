@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: install dependencies
+      run: apt-get update && apt-get install -y libasound2-dev
+
     - name: Update Rust stable
       run: rustup toolchain install stable
 
