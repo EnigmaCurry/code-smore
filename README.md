@@ -51,14 +51,19 @@ morse-quest completions fish | source
 
 ```
 $ morse-quest
-
 Usage: morse-quest [OPTIONS] [COMMAND]
 
 Commands:
+  fecr-quiz   Start the Fast Enough Character Recognition quiz
+  test-sound  Test that sound is working
+  help        Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help                  Print help
-  -V, --version               Print version
+      --dot <DOT_DURATION>  Sets the dot duration in milliseconds [default: 60]
+      --wpm <WPM>           Sets the speed in words per minute [default: 20]
+      --tone <TONE_FREQ>    Sets the tone frequency in Hz [default: 440.0]
+  -h, --help                Print help
+  -V, --version             Print version
 ```
 
 ## Test sound

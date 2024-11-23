@@ -1,6 +1,6 @@
 [package]
 name = "morse-quest"
-description = "morse-quest is a CLI tool"
+description = "morse-quest is a CLI tool for morse code practice"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/EnigmaCurry/morse-quest"
