@@ -1,15 +1,15 @@
 [package]
-name = "${APP}"
-description = "${APP} is a CLI tool"
+name = "morse-quest"
+description = "morse-quest is a CLI tool"
 version = "0.1.0"
 edition = "2021"
-repository = "https://github.com/${GIT_USERNAME}/${APP}"
-homepage = "https://github.com/${GIT_USERNAME}/${APP}"
+repository = "https://github.com/EnigmaCurry/morse-quest"
+homepage = "https://github.com/EnigmaCurry/morse-quest"
 license = "MIT"
 keywords = []
 categories = ["command-line-utilities"]
 readme = "README.md"
-documentation = "https://docs.rs/${APP}"
+documentation = "https://docs.rs/morse-quest"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)'] }
@@ -17,9 +17,12 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)
 [dependencies]
 clap = "4.5.17"
 clap_complete = "4.5.29"
+crossterm = "0.28.1"
 dirs = "5.0.1"
 env_logger = "0.11.5"
 log = "0.4.22"
+rodio = "0.20.1"
+textwrap = "0.16.1"
 
 [dev-dependencies]
 shell-words = "1.1.0"

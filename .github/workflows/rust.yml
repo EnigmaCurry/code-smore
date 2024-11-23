@@ -21,7 +21,7 @@ jobs:
       uses: actions/checkout@v4
 
     # Preprocess Cargo.lock to ignore version fields for cache id hashing purposes:
-    - name: Prepare Cargo.lock for caching (ignore ${APP} version)
+    - name: Prepare Cargo.lock for caching (ignore morse-quest version)
       run: |
         PROJECT_NAME=$(grep '^name' Cargo.toml | sed 's/name = "\(.*\)"/\1/')
         awk '/\[\[package\]\]/{p=0} /name = "'"${PROJECT_NAME}"'"/{p=1} p && /version = /{next} 1' Cargo.lock > Cargo.lock.no-version

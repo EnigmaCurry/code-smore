@@ -1,6 +1,8 @@
 use clap_complete::shells::Shell;
 
 mod cli;
+mod fecr_quiz;
+mod morse;
 mod prelude;
 
 use prelude::*;
@@ -32,12 +34,39 @@ fn main() {
         return;
     }
 
+    // Global arguments
+    let dot_duration = matches.get_one::<u32>("dot");
+    let wpm = matches.get_one::<u32>("wpm");
+    let tone_frequency: f32 = *matches.get_one::<f32>("tone").unwrap();
+
+    // Calculate dot duration if not explicitly provided
+    let dot_duration = match (dot_duration, wpm) {
+        (Some(_), Some(_)) => {
+            eprintln!("Error: '--dot' and '--wpm' cannot be used together.");
+            std::process::exit(1);
+        }
+        (Some(&dot), None) => dot,
+        (None, Some(&wpm)) => morse::wpm_to_dot_length(wpm),
+        (None, None) => 60, // Default dot duration
+    };
+
     // Handle the subcommands:
     eprintln!("");
     let exit_code = match matches.subcommand() {
-        Some(("hello", sub_matches)) => {
-            let name = sub_matches.get_one::<String>("NAME").unwrap();
-            println!("Hello, {name}!");
+        Some(("fecr-quiz", sub_matches)) => {
+            let trials = sub_matches
+                .get_one::<u32>("trials")
+                .expect("Missing trials arg default");
+            let char_set = sub_matches
+                .get_one::<String>("characters")
+                .expect("Missing --character arg default");
+            fecr_quiz::start_quiz(*trials, char_set);
+            0
+        }
+        Some(("test-sound", _sub_matches)) => {
+            let message = "If sound is working, you should hear this test message now.";
+            println!("{}", message);
+            morse::play(message, dot_duration, tone_frequency);
             0
         }
         Some(("completions", sub_matches)) => {

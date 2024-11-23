@@ -6,7 +6,7 @@ platform may be required.
 ## Install host dependencies
 
 ```
-sudo dnf install git openssh rustup
+sudo dnf install git openssh rustup alsa-lib-devel
 sudo dnf install @development-tools @development-libs
 ```
 
@@ -20,9 +20,9 @@ rustup-init ## just press enter when prompted for default selection
 ## Clone source repository
 
 ```
-git clone git@github.com:${GIT_USERNAME}/${APP}.git \
-  ~/git/vendor/${GIT_USERNAME}/${APP}
-cd ~/git/vendor/${GIT_USERNAME}/${APP}
+git clone git@github.com:EnigmaCurry/morse-quest.git \
+  ~/git/vendor/EnigmaCurry/morse-quest
+cd ~/git/vendor/EnigmaCurry/morse-quest
 ```
 
 ## Install development dependencies
@@ -32,7 +32,7 @@ cargo install just
 just deps
 ```
 
-## Build and run development ${APP}
+## Build and run development morse-quest
 
 ```
 just run help
@@ -49,18 +49,18 @@ just build --release
 
 ```
 ## Add this to ~/.bashrc or equivalent:
-alias ${APP}='just -f ~/git/vendor/${GIT_USERNAME}/${APP}/Justfile run'
-alias h=${APP}
+alias morse-quest='just -f ~/git/vendor/EnigmaCurry/morse-quest/Justfile run'
+alias h=morse-quest
 ```
 
-Now you can run `${APP}`, or simply `h`, from any directory, with
+Now you can run `morse-quest`, or simply `h`, from any directory, with
 any arguments, and it will automatically rebuild from source, and then
 run it with those args.
 
 ## Testing
 
 This project has incomplete testing. [See the latest coverage
-report](https://${GIT_USERNAME}.github.io/${APP}/coverage/master/).
+report](https://EnigmaCurry.github.io/morse-quest/coverage/master/).
 
 ## Run tests
 
