@@ -66,6 +66,9 @@ Options:
   -V, --version             Print version
 ```
 
+Note that `--dot` and `--wpm` are mutually exclusive, you may only set
+one or the other.
+
 ## Test sound
 
 To test that your sound device is working, run this command:
@@ -93,6 +96,7 @@ The quiz supports these optional arguments:
 ```
       --trials <trials>     [default: 128]
       --cheat               Print the text character to the screen
+      --random              True randomization of characters (not just shuffled)
 ```
 
 ## Development
