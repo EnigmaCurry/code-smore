@@ -611,7 +611,7 @@ dependencies = [
 
 [[package]]
 name = "morse-quest"
-version = "0.1.13"
+version = "0.1.14"
 dependencies = [
  "clap",
  "clap_complete",
