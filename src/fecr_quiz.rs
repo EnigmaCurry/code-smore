@@ -1,4 +1,4 @@
-use crate::morse::play;
+use crate::morse::MorsePlayer;
 use rand::prelude::SliceRandom;
 
 use crossterm::{
@@ -25,8 +25,9 @@ pub fn start_quiz(
     for line in wrap(&paragraph, 70) {
         println!("{}", line);
     }
+    let player = MorsePlayer::new();
 
-    play("VVV", dot_duration, tone_freq);
+    player.play("VVV", dot_duration, tone_freq);
 
     // Enable raw mode to capture key presses
     if let Err(e) = enable_raw_mode() {
@@ -68,7 +69,15 @@ pub fn start_quiz(
         eprintln!("Error disabling raw mode: {}", e);
     }
 
-    let results = reaction_time_quiz(char_set, trials, dot_duration, tone_freq, text, randomize);
+    let results = reaction_time_quiz(
+        &player,
+        char_set,
+        trials,
+        dot_duration,
+        tone_freq,
+        text,
+        randomize,
+    );
     print_results(&results, Duration::from_millis(dot_duration.into()));
 }
 
@@ -79,6 +88,7 @@ struct QuizResult {
 }
 
 fn reaction_time_quiz(
+    player: &MorsePlayer,
     char_set: &str,
     trials: u32,
     dot_duration: u32,
@@ -131,7 +141,7 @@ fn reaction_time_quiz(
             stdout.flush().unwrap();
         }
 
-        play(&target_letter.to_string(), dot_duration, tone_freq);
+        player.play(&target_letter.to_string(), dot_duration, tone_freq);
         if text {
             println!("{}", target_letter);
             stdout.flush().unwrap();

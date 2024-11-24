@@ -1,5 +1,8 @@
 use rodio::{OutputStream, Sink, Source};
+use std::sync::Arc;
 use std::time::Duration;
+
+use std::collections::HashMap;
 
 /// Custom audio source for generating tones
 struct Tone {
@@ -50,81 +53,119 @@ pub fn wpm_to_dot_length(wpm: u32) -> u32 {
     1200 / wpm
 }
 
-pub fn text_to_morse(text: &str) -> String {
-    let morse_map = [
-        ('A', ".-"),
-        ('B', "-..."),
-        ('C', "-.-."),
-        ('D', "-.."),
-        ('E', "."),
-        ('F', "..-."),
-        ('G', "--."),
-        ('H', "...."),
-        ('I', ".."),
-        ('J', ".---"),
-        ('K', "-.-"),
-        ('L', ".-.."),
-        ('M', "--"),
-        ('N', "-."),
-        ('O', "---"),
-        ('P', ".--."),
-        ('Q', "--.-"),
-        ('R', ".-."),
-        ('S', "..."),
-        ('T', "-"),
-        ('U', "..-"),
-        ('V', "...-"),
-        ('W', ".--"),
-        ('X', "-..-"),
-        ('Y', "-.--"),
-        ('Z', "--.."),
-        ('1', ".----"),
-        ('2', "..---"),
-        ('3', "...--"),
-        ('4', "....-"),
-        ('5', "....."),
-        ('6', "-...."),
-        ('7', "--..."),
-        ('8', "---.."),
-        ('9', "----."),
-        ('0', "-----"),
-        ('.', ".-.-.-"),
-        (',', "--..--"),
-        ('?', "..--.."),
-        ('!', "-.-.--"),
-        ('-', "-....-"),
-        ('/', "-..-."),
-        ('@', ".--.-."),
-        ('(', "-.--."),
-        (')', "-.--.-"),
+fn get_morse_maps() -> (HashMap<char, String>, HashMap<String, char>) {
+    let forward_map = vec![
+        ('A', ".-".to_string()),
+        ('B', "-...".to_string()),
+        ('C', "-.-.".to_string()),
+        ('D', "-..".to_string()),
+        ('E', ".".to_string()),
+        ('F', "..-.".to_string()),
+        ('G', "--.".to_string()),
+        ('H', "....".to_string()),
+        ('I', "..".to_string()),
+        ('J', ".---".to_string()),
+        ('K', "-.-".to_string()),
+        ('L', ".-..".to_string()),
+        ('M', "--".to_string()),
+        ('N', "-.".to_string()),
+        ('O', "---".to_string()),
+        ('P', ".--.".to_string()),
+        ('Q', "--.-".to_string()),
+        ('R', ".-.".to_string()),
+        ('S', "...".to_string()),
+        ('T', "-".to_string()),
+        ('U', "..-".to_string()),
+        ('V', "...-".to_string()),
+        ('W', ".--".to_string()),
+        ('X', "-..-".to_string()),
+        ('Y', "-.--".to_string()),
+        ('Z', "--..".to_string()),
+        ('1', ".----".to_string()),
+        ('2', "..---".to_string()),
+        ('3', "...--".to_string()),
+        ('4', "....-".to_string()),
+        ('5', ".....".to_string()),
+        ('6', "-....".to_string()),
+        ('7', "--...".to_string()),
+        ('8', "---..".to_string()),
+        ('9', "----.".to_string()),
+        ('0', "-----".to_string()),
+        ('.', ".-.-.-".to_string()),
+        (',', "--..--".to_string()),
+        ('?', "..--..".to_string()),
+        ('!', "-.-.--".to_string()),
+        ('-', "-....-".to_string()),
+        ('/', "-..-.".to_string()),
+        ('@', ".--.-.".to_string()),
+        ('(', "-.--.".to_string()),
+        (')', "-.--.-".to_string()),
     ];
 
+    let mut forward_hashmap = HashMap::new();
+    let mut reverse_hashmap = HashMap::new();
+
+    for (ch, code) in forward_map {
+        forward_hashmap.insert(ch, code.clone());
+        reverse_hashmap.insert(code, ch);
+    }
+    (forward_hashmap, reverse_hashmap)
+}
+
+pub fn code_to_text(code: &str) -> String {
+    let morse_map = get_morse_maps().1;
+    regex::Regex::new(r"\s{3,}") // Match three or more spaces
+        .unwrap()
+        .replace_all(&code, " / ")
+        .to_string()
+        .split(" / ") // Split by word gaps
+        .map(|word| {
+            word.split_whitespace() // Split by character gaps
+                .filter_map(|morse| morse_map.get(morse)) // Lookup each Morse code
+                .collect::<String>() // Collect decoded characters into a string (word)
+        })
+        .collect::<Vec<String>>() // Collect words into a vector
+        .join(" ") // Join words with spaces
+}
+
+pub fn text_to_morse(text: &str) -> String {
     text.split_whitespace()
         .map(|word| {
             word.chars()
                 .filter_map(|ch| {
-                    morse_map.iter().find_map(|&(c, m)| {
-                        if c == ch.to_ascii_uppercase() {
-                            Some(m)
+                    get_morse_maps().0.iter().find_map(|(c, m)| {
+                        if *c == ch.to_ascii_uppercase() {
+                            Some(m.clone())
                         } else {
                             None
                         }
                     })
                 })
-                .collect::<Vec<&str>>()
+                .collect::<Vec<String>>()
                 .join(" ")
         })
         .collect::<Vec<String>>()
-        .join("   ") // three spaces for word gaps
+        .join(" / ") // word gap
 }
 
 fn encode_morse(text: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)> {
+    let morse_code = text_to_morse(text);
+    let morse_code = regex::Regex::new(r"\s{3,}") // Match three or more spaces
+        .unwrap()
+        .replace_all(&morse_code, "/")
+        .to_string();
+    let morse_code = regex::Regex::new(r"\s{2}") // Match exactly two spaces
+        .unwrap()
+        .replace_all(&morse_code, " ")
+        .to_string();
+
+    morse_to_tones(&morse_code, dot_duration, tone_freq)
+}
+
+fn morse_to_tones(morse_code: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)> {
     let dash_duration = dot_duration * 3; // Duration of a dash
     let char_gap_duration = dot_duration * 3; // Gap between characters
     let word_gap_duration = dot_duration * 7; // Gap between words
-
-    let morse_code = text_to_morse(text);
-    let morse_code = morse_code.replace("   ", "/").replace("  ", " ");
 
     let mut tones = Vec::new();
 
@@ -156,17 +197,59 @@ fn play_morse_code(tones: Vec<(f32, u32)>, sink: &Sink) {
     }
 }
 
-pub fn play(message: &str, dot_duration: u32, tone_freq: f32) {
-    // Set up audio output
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    let sink = Sink::try_new(&stream_handle).unwrap();
+pub struct MorsePlayer {
+    #[allow(dead_code)]
+    stream: Arc<OutputStream>, // Keep the stream alive
+    stream_handle: Arc<rodio::OutputStreamHandle>, // Shareable stream handle
+}
 
-    // Encode the message into Morse code
-    let tones = encode_morse(message, dot_duration, tone_freq);
+impl MorsePlayer {
+    pub fn new() -> Self {
+        // Set up the audio output once
+        let stream = OutputStream::try_default().unwrap();
+        let stream_handle = Arc::new(stream.1);
 
-    // Play the Morse code
-    play_morse_code(tones, &sink);
+        Self {
+            stream: Arc::new(stream.0),
+            stream_handle,
+        }
+    }
 
-    // Keep the application alive until the sound finishes
-    sink.sleep_until_end();
+    pub fn play_gap(&self, dot_duration: u32) {
+        let mut tones = Vec::new();
+        tones.push((0.0, dot_duration));
+        let sink = Sink::try_new(&self.stream_handle).unwrap();
+        play_morse_code(tones, &sink);
+        sink.sleep_until_end();
+    }
+
+    pub fn play_morse(&self, message: &str, dot_duration: u32, tone_freq: f32) {
+        let sink = Sink::try_new(&self.stream_handle).unwrap();
+        let tones = morse_to_tones(message, dot_duration, tone_freq);
+        play_morse_code(tones, &sink);
+        sink.sleep_until_end();
+    }
+
+    pub fn play(&self, message: &str, dot_duration: u32, tone_freq: f32) {
+        let sink = Sink::try_new(&self.stream_handle).unwrap();
+        let tones = encode_morse(message, dot_duration, tone_freq);
+        play_morse_code(tones, &sink);
+        sink.sleep_until_end();
+    }
+}
+
+//pub fn play_intro(message: &str, dot_duration: u32, tone_freq: f32) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_text_to_morse() {
+        assert_eq!(text_to_morse("SOS"), "... --- ...");
+        assert_eq!(
+            text_to_morse("Hello   World 123. How are you?"),
+            ".... . .-.. .-.. --- / .-- --- .-. .-.. -.. / .---- ..--- ...-- .-.-.- / .... --- .-- / .- .-. . / -.-- --- ..- ..--.."
+        );
+    }
 }

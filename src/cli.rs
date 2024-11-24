@@ -36,12 +36,14 @@ pub fn app() -> Command {
         .arg(
             Arg::new("text")
                 .long("text")
+                .global(true)
                 .action(clap::ArgAction::SetTrue)
                 .help("Output text rather than sound"),
         )
         .arg(
             Arg::new("sound")
                 .long("sound")
+                .global(true)
                 .action(clap::ArgAction::SetTrue)
                 .help("Output sound in addition to the --text option"),
         )

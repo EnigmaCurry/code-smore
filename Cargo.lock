@@ -641,6 +641,7 @@ dependencies = [
  "env_logger",
  "log",
  "rand",
+ "regex",
  "rodio",
  "shell-words",
  "textwrap",

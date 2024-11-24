@@ -8,6 +8,8 @@ mod prelude;
 use prelude::*;
 use std::io::BufRead;
 
+use crate::morse::text_to_morse;
+
 fn main() {
     let mut cmd = cli::app();
     let matches = cmd.clone().get_matches();
@@ -58,7 +60,6 @@ fn main() {
     };
 
     // Handle the subcommands:
-    eprintln!("");
     let exit_code = match matches.subcommand() {
         Some(("fecr-quiz", sub_matches)) => {
             let trials = sub_matches
@@ -74,23 +75,26 @@ fn main() {
             0
         }
         Some(("test-sound", _sub_matches)) => {
+            let player = morse::MorsePlayer::new();
             let message = "If sound is working, you should hear this test message now.";
-            morse::play(message, dot_duration, tone_freq);
+            println!("{}", message);
+            println!("{}", text_to_morse(message));
+            player.play(message, dot_duration, tone_freq);
             0
         }
         Some(("read", sub_matches)) => {
+            let player = morse::MorsePlayer::new();
             let morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
 
             let stdin = std::io::stdin();
             if atty::is(atty::Stream::Stdin) {
-                println!("## Type text and it will be output as morse code.");
+                println!("## Type some text and it will be output as morse code.");
                 println!("## You may also pipe text to this same command.");
                 println!("## Press Enter after each line.");
                 println!("## When done, press Ctrl-D to exit.");
             }
-
             for line in stdin.lock().lines() {
                 match line {
                     Ok(line) => {
@@ -98,22 +102,28 @@ fn main() {
                             // Output text instead of sound
                             if *morse {
                                 // stdin is already morse encoded, convert it to text:
-                                eprintln!("TODO z");
+                                println!("{}", morse::code_to_text(&line));
+                                if sound {
+                                    player.play_morse(&line, dot_duration, tone_freq);
+                                    player.play_gap(dot_duration * 14);
+                                }
                             } else {
                                 // Encode stdin as morse code:
                                 println!("{}", morse::text_to_morse(&line));
                                 if sound {
-                                    morse::play("VVV", dot_duration, tone_freq);
-                                    morse::play(&line, dot_duration, tone_freq);
+                                    player.play(&line, dot_duration, tone_freq);
+                                    player.play_gap(dot_duration * 14);
                                 }
                             }
                         } else {
                             if *morse {
                                 // stdin is already morse encoded:
-                                eprintln!("TODO x");
+                                player.play_morse(&line, dot_duration, tone_freq);
+                                player.play_gap(dot_duration * 14);
                             } else {
                                 // Convert stdin into morse and play it:
-                                eprintln!("TODO c");
+                                player.play(&line, dot_duration, tone_freq);
+                                player.play_gap(dot_duration * 14);
                             }
                         }
                     }

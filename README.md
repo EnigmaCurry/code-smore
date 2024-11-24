@@ -27,12 +27,15 @@ Usage: morse-quest [OPTIONS] [COMMAND]
 Commands:
   fecr-quiz   Start the Fast Enough Character Recognition quiz
   test-sound  Test that sound is working
+  read        Read text from stdin and output it as morse code
   help        Print this message or the help of the given subcommand(s)
 
 Options:
       --dot <DOT_DURATION>  Sets the dot duration in milliseconds [default: 60]
       --wpm <WPM>           Sets the speed in words per minute [default: 20]
       --tone <TONE_FREQ>    Sets the tone frequency in Hz [default: 440.0]
+      --text                Output text rather than sound
+      --sound               Output sound in addition to the --text option
   -h, --help                Print help
   -V, --version             Print version
 ```
@@ -48,7 +51,7 @@ To test that your sound device is working, run this command:
 morse-quest test-sound
 ```
 
-You should hear an example 36s transmission at 20 WPM.
+You should hear an example 42s transmission at 20 WPM.
 
 ## Fast Enough Character Recognition quiz
 
@@ -68,6 +71,47 @@ The quiz supports these optional arguments:
       --trials <trials>     [default: 128]
       --cheat               Print the text character to the screen
       --random              True randomization of characters (not just shuffled)
+```
+
+## Read and encode from stdin
+
+You can send text to have it encoded into morse code:
+
+To encode plain text and play back morse code as sound:
+
+```
+$ echo "Hello World" | ./morse-quest read
+```
+
+To encode plain text to morse code text (no sound):
+
+```
+$ echo "Hello World" | ./morse-quest read --text
+.... . .-.. .-.. --- / .-- --- .-. .-.. -..
+```
+
+To encode plain text and output morse code text and sound:
+
+```
+echo "Hello World" | ./morse-quest read --text --sound
+```
+
+To read plain text interactively and output morse code and sound:
+
+```
+$ ./morse-quest read --text --sound
+## Type some text and it will be output as morse code.
+## You may also pipe text to this same command.
+## Press Enter after each line.
+## When done, press Ctrl-D to exit.
+Hello World
+```
+
+Encode text and playback as separate steps in a pipeline:
+
+```
+## --morse expects text to already be morse encoded:
+echo "Hello World" | ./morse-quest read --text | ./morse-quest read --morse
 ```
 
 ## Tab completion
