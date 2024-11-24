@@ -26,6 +26,8 @@ pub fn start_quiz(
         println!("{}", line);
     }
 
+    play("VVV", dot_duration, tone_freq);
+
     // Enable raw mode to capture key presses
     if let Err(e) = enable_raw_mode() {
         eprintln!("Error enabling raw mode: {}", e);
