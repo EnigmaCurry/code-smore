@@ -223,6 +223,13 @@ impl MorsePlayer {
         sink.sleep_until_end();
     }
 
+    pub fn play_nonblocking_tone(&self, dot_duration: u32, tone_freq: f32) {
+        let mut tones = Vec::new();
+        tones.push((tone_freq, dot_duration));
+        let sink = Sink::try_new(&self.stream_handle).unwrap();
+        play_morse_code(tones, &sink);
+    }
+
     pub fn play_morse(&self, message: &str, dot_duration: u32, tone_freq: f32) {
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         let tones = morse_to_tones(message, dot_duration, tone_freq);

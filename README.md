@@ -13,7 +13,7 @@ This is a morse code practice tool.
 Or install via cargo ([crates.io/crates/morse-quest](https://crates.io/crates/morse-quest)):
 
 ```
-cargo install morse-quest
+$ cargo install morse-quest
 ```
 
 ## Usage
@@ -48,24 +48,34 @@ one or the other.
 To test that your sound device is working, run this command:
 
 ```
-morse-quest test-sound
+$ morse-quest test-sound
 ```
 
 You should hear an example 42s transmission at 20 WPM.
 
 ## Fast Enough Character Recognition quiz
 
-To run the FECR quiz, run this command:
-
-```
-morse-quest fecr-quiz aeiou
-```
-
 The FECR quiz will examine your skills at recognizing single
-characters from the given set (the full alphanumeric set is used by
-default if not provided).
+characters from the given character set (the alphanumeric set is used
+by default if not provided).
 
-The quiz supports these optional arguments:
+Before you begin the quiz you should test your baseline keyboard
+skills and measure your personal input latency:
+
+```
+$ morse-quest fecr-quiz -B
+Your calibrated baseline score is: 610
+```
+
+Run the FECR quiz by providing the set of characters you want to quiz
+(e.g., `aeiou`.) and your personal baseline calibration value (e.g.,
+`610`):
+
+```
+$ morse-quest fecr-quiz -b 610 aeiou
+```
+
+The quiz supports these optional named arguments:
 
 ```
       --trials <trials>     [default: 128]
@@ -93,7 +103,7 @@ $ echo "Hello World" | morse-quest read --text
 To encode plain text and output morse code text and sound:
 
 ```
-echo "Hello World" | morse-quest read --text --sound
+$ echo "Hello World" | morse-quest read --text --sound
 ```
 
 To read plain text interactively and output morse code and sound:
@@ -111,7 +121,7 @@ Encode text and playback as separate steps in a pipeline, playback at 10WPM:
 
 ```
 ## --morse expects text to already be morse encoded:
-echo "Hello World" | morse-quest read --text | morse-quest read --morse --wpm 10
+$ echo "Hello World" | morse-quest read --text | morse-quest read --morse --wpm 10
 ```
 
 ## Tab completion

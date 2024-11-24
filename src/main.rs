@@ -71,7 +71,22 @@ fn main() {
             let randomize = sub_matches
                 .get_one::<bool>("random")
                 .expect("Missing random arg default");
-            fecr_quiz::start_quiz(*trials, char_set, dot_duration, tone_freq, text, *randomize);
+            let calibration_mode = sub_matches
+                .get_one::<bool>("baseline-calibration")
+                .expect("Missing --baseline-calibration arg default");
+            let baseline = sub_matches
+                .get_one::<u32>("baseline")
+                .expect("Missing --baseline arg default");
+            fecr_quiz::start_quiz(
+                *trials,
+                char_set,
+                dot_duration,
+                tone_freq,
+                text,
+                *randomize,
+                *calibration_mode,
+                *baseline,
+            );
             0
         }
         Some(("test-sound", _sub_matches)) => {

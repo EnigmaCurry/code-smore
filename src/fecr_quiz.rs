@@ -19,15 +19,30 @@ pub fn start_quiz(
     tone_freq: f32,
     text: bool,
     randomize: bool,
+    calibration: bool,
+    baseline: u32,
 ) {
-    let paragraph = format!("Fast Enough Character Recognition quiz.\n\nMorse encoded characters will be played back to you one at a time and you must type the character you hear as soon as you recognize it.\n\nThis test will include {trials} trials. You will be timed in your response. You may stop the quiz at any time by pressing the ESC key.\n\nTo begin the quiz press the Enter key.");
+    let paragraph = match calibration {
+        true => format!("Calibration process.\n\nThis process will measure your native keyboard typing skills to calculate your personal output latency. A series of characters will be displayed at the same time a tone is played. Enter the characters as fast as you can.\n"),
+        false => format!("Fast Enough Character Recognition quiz.\n\nMorse encoded characters will be played back to you one at a time and you must type the character you hear as soon as you recognize it.\n\nThis test will include {trials} trials. You will be timed in your response. Your reaction time is subtracted from the baseline input latency of {baseline}ms.\n")
+    };
 
     for line in wrap(&paragraph, 70) {
         println!("{}", line);
     }
     let player = MorsePlayer::new();
 
-    player.play("VVV", dot_duration, tone_freq);
+    if calibration {
+    } else {
+        println!("Initializing audio (VVV) ...");
+        player.play("VVV", dot_duration, tone_freq);
+    }
+
+    if calibration {
+        println!("\nYou may stop the calibration at any time by pressing the ESC key.\nTo begin the calibration press the Enter key.");
+    } else {
+        println!("\nYou may stop the quiz at any time by pressing the ESC key.\nTo begin the quiz press the Enter key.");
+    }
 
     // Enable raw mode to capture key presses
     if let Err(e) = enable_raw_mode() {
@@ -46,7 +61,11 @@ pub fn start_quiz(
                     }
                     KeyCode::Esc => {
                         // Exit the quiz
-                        println!("\nQuiz terminated.");
+                        if calibration {
+                            println!("\nCalibration process terminated.");
+                        } else {
+                            println!("\nQuiz terminated.");
+                        }
                         if let Err(e) = disable_raw_mode() {
                             eprintln!("Error disabling raw mode: {}", e);
                         }
@@ -77,8 +96,15 @@ pub fn start_quiz(
         tone_freq,
         text,
         randomize,
+        calibration,
+        if calibration { 0 } else { baseline },
     );
-    print_results(&results, Duration::from_millis(dot_duration.into()));
+    print_results(
+        &results,
+        Duration::from_millis(dot_duration.into()),
+        calibration,
+        if calibration { 0 } else { baseline },
+    );
 }
 
 struct QuizResult {
@@ -95,6 +121,8 @@ fn reaction_time_quiz(
     tone_freq: f32,
     text: bool,
     randomize: bool,
+    calibration: bool,
+    baseline: u32,
 ) -> QuizResult {
     let mut prompts = Vec::new();
     let mut responses = Vec::new();
@@ -136,15 +164,15 @@ fn reaction_time_quiz(
         // Clear the screen and display the letter
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
-        if text {
-            print!("Type the letter: ");
+        if text || calibration {
+            print!("Type the letter: {target_letter}");
             stdout.flush().unwrap();
         }
 
-        player.play(&target_letter.to_string(), dot_duration, tone_freq);
-        if text {
-            println!("{}", target_letter);
-            stdout.flush().unwrap();
+        if calibration {
+            player.play_nonblocking_tone(dot_duration, tone_freq);
+        } else {
+            player.play(&target_letter.to_string(), dot_duration, tone_freq);
         }
 
         // Start the timer
@@ -188,7 +216,13 @@ fn reaction_time_quiz(
 
         // Stop the timer
         let elapsed = start_time.elapsed();
-        reaction_times.push(elapsed);
+        let baseline_duration = Duration::from_millis(baseline.into());
+        let clamped_duration = if elapsed > baseline_duration {
+            elapsed - baseline_duration
+        } else {
+            Duration::from_millis(0)
+        };
+        reaction_times.push(clamped_duration);
 
         responses.push(is_correct);
     }
@@ -205,7 +239,7 @@ fn reaction_time_quiz(
     }
 }
 
-fn print_results(results: &QuizResult, dot_duration: Duration) {
+fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool, baseline: u32) {
     let total = results.prompts.len();
     let correct = results.responses.iter().filter(|&&r| r).count();
     let incorrect = total - correct;
@@ -275,19 +309,27 @@ fn print_results(results: &QuizResult, dot_duration: Duration) {
         average_incorrect_time
     );
     println!("Total reaction time: {:.2?}", total_time);
-    println!(
-        "\nYour grade: {}
+    if calibration {
+        let average = average_time.as_millis();
+        println!("\nYour calibrated baseline score is: {average}");
+        println!("Provide this score as your baseline to the FECR quiz:");
+        println!("\n   morse-quest fecr-quiz -b {average}")
+    } else {
+        println!("Baseline latency subtracted: {baseline}ms");
+        println!(
+            "\nYour grade: {}
 Speed Rating: {}",
-        grade, speed_score
-    );
+            grade, speed_score
+        );
 
-    match grade {
-        "A+" => println!("Phenomenal! You nailed both speed and accuracy."),
-        "A" => println!("Excellent work! A little faster and you'll be perfect."),
-        "B" => println!("Great job! Keep honing your skills."),
-        "C" => println!("Good effort! Practice to improve both speed and accuracy."),
-        "D" => println!("Keep at it! You can do better with more focus."),
-        "F" => println!("Don't give up! Consistency and practice will help."),
-        _ => (),
+        match grade {
+            "A+" => println!("Phenomenal! You nailed both speed and accuracy."),
+            "A" => println!("Excellent work! A little faster and you'll be perfect."),
+            "B" => println!("Great job! Keep honing your skills."),
+            "C" => println!("Good effort! Practice to improve both speed and accuracy."),
+            "D" => println!("Keep at it! You can do better with more focus."),
+            "F" => println!("Don't give up! Consistency and practice will help."),
+            _ => (),
+        }
     }
 }
