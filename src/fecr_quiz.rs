@@ -330,13 +330,20 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
 
     // Sort by avg_correct_time
     summary.sort_by(|a, b| {
-        let avg_a = a.avg_correct_time.parse::<f64>().unwrap_or_default();
-        let avg_b = b.avg_correct_time.parse::<f64>().unwrap_or_default();
+        let avg_a = a
+            .avg_correct_time
+            .replace("ms", "")
+            .parse::<f64>()
+            .unwrap_or_default();
+        let avg_b = b
+            .avg_correct_time
+            .replace("ms", "")
+            .parse::<f64>()
+            .unwrap_or_default();
         avg_a
             .partial_cmp(&avg_b)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-
     // Create and style the table.
     let mut table = Table::new(summary);
     let table = table.with(Style::rounded()); // Rounded ASCII style
