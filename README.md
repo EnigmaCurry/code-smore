@@ -80,26 +80,26 @@ You can send text to have it encoded into morse code:
 To encode plain text and play back morse code as sound:
 
 ```
-$ echo "Hello World" | ./morse-quest read
+$ echo "Hello World" | morse-quest read
 ```
 
 To encode plain text to morse code text (no sound):
 
 ```
-$ echo "Hello World" | ./morse-quest read --text
+$ echo "Hello World" | morse-quest read --text
 .... . .-.. .-.. --- / .-- --- .-. .-.. -..
 ```
 
 To encode plain text and output morse code text and sound:
 
 ```
-echo "Hello World" | ./morse-quest read --text --sound
+echo "Hello World" | morse-quest read --text --sound
 ```
 
 To read plain text interactively and output morse code and sound:
 
 ```
-$ ./morse-quest read --text --sound
+$ morse-quest read --text --sound
 ## Type some text and it will be output as morse code.
 ## You may also pipe text to this same command.
 ## Press Enter after each line.
@@ -107,11 +107,11 @@ $ ./morse-quest read --text --sound
 Hello World
 ```
 
-Encode text and playback as separate steps in a pipeline:
+Encode text and playback as separate steps in a pipeline, playback at 10WPM:
 
 ```
 ## --morse expects text to already be morse encoded:
-echo "Hello World" | ./morse-quest read --text | ./morse-quest read --morse
+echo "Hello World" | morse-quest read --text | morse-quest read --morse --wpm 10
 ```
 
 ## Tab completion
