@@ -25,6 +25,7 @@ log = "0.4.22"
 rand = "0.8.5"
 regex = "1.11.1"
 rodio = "0.20.1"
+tabled = "0.17.0"
 textwrap = "0.16.1"
 
 [dev-dependencies]

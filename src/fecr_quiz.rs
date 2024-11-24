@@ -1,6 +1,4 @@
 use crate::morse::MorsePlayer;
-use rand::prelude::SliceRandom;
-
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode},
@@ -8,8 +6,12 @@ use crossterm::{
     terminal::{Clear, ClearType},
     ExecutableCommand,
 };
+use rand::prelude::SliceRandom;
+use std::collections::HashMap;
 use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
+use tabled::settings::Style;
+use tabled::{Table, Tabled};
 use textwrap::wrap;
 
 pub fn start_quiz(
@@ -239,7 +241,16 @@ fn reaction_time_quiz(
     }
 }
 
+#[derive(Tabled)]
+struct SummaryRow {
+    character: char,
+    count: u32,
+    avg_correct_time: String,
+    avg_incorrect_time: String,
+}
+
 fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool, baseline: u32) {
+    println!("\nTest complete!\n");
     let total = results.prompts.len();
     let correct = results.responses.iter().filter(|&&r| r).count();
     let incorrect = total - correct;
@@ -277,7 +288,63 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
         Duration::default()
     };
 
-    // Assign a grade based on correctness and reaction speed
+    // Summary output by character
+    let mut character_stats: HashMap<char, (u32, Duration, Duration)> = HashMap::new();
+
+    for (i, &prompt) in results.prompts.iter().enumerate() {
+        let entry =
+            character_stats
+                .entry(prompt)
+                .or_insert((0, Duration::default(), Duration::default()));
+        entry.0 += 1; // Increment trial count
+
+        if results.responses[i] {
+            entry.1 += results.reaction_times[i]; // Add to correct times
+        } else {
+            entry.2 += results.reaction_times[i]; // Add to incorrect times
+        }
+    }
+
+    let mut summary: Vec<SummaryRow> = character_stats
+        .into_iter()
+        .map(|(character, (count, correct_time, incorrect_time))| {
+            let avg_correct_time = if count > 0 {
+                correct_time / count as u32
+            } else {
+                Duration::default()
+            };
+            let avg_incorrect_time = if count > 0 {
+                incorrect_time / count as u32
+            } else {
+                Duration::default()
+            };
+
+            SummaryRow {
+                character,
+                count,
+                avg_correct_time: format!("{:.2?}", avg_correct_time.as_secs_f64()),
+                avg_incorrect_time: format!("{:.2?}", avg_incorrect_time.as_secs_f64()),
+            }
+        })
+        .collect();
+
+    // Sort by avg_correct_time
+    summary.sort_by(|a, b| {
+        let avg_a = a.avg_correct_time.parse::<f64>().unwrap_or_default();
+        let avg_b = b.avg_correct_time.parse::<f64>().unwrap_or_default();
+        avg_a
+            .partial_cmp(&avg_b)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    // Create and style the table.
+    let mut table = Table::new(summary);
+    let table = table.with(Style::rounded()); // Rounded ASCII style
+
+    println!("\nCharacter Performance Summary:\n");
+    println!("{}", table);
+
+    // Overall results
     let percentage_correct = (correct as f64 / total as f64) * 100.0;
     let speed_score = if average_correct_time <= dot_duration {
         "Excellent"
@@ -309,6 +376,7 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
         average_incorrect_time
     );
     println!("Total reaction time: {:.2?}", total_time);
+
     if calibration {
         let average = average_time.as_millis();
         println!("\nYour calibrated baseline score is: {average}");
@@ -318,7 +386,7 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
         println!("Baseline latency subtracted: {baseline}ms");
         println!(
             "\nYour grade: {}
-Speed Rating: {}",
+Speed rating: {}",
             grade, speed_score
         );
 
