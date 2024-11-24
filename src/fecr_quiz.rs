@@ -322,8 +322,8 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
             SummaryRow {
                 character,
                 count,
-                avg_correct_time: format!("{:.2?}", avg_correct_time.as_secs_f64()),
-                avg_incorrect_time: format!("{:.2?}", avg_incorrect_time.as_secs_f64()),
+                avg_correct_time: format!("{:.0?}ms", avg_correct_time.as_millis()),
+                avg_incorrect_time: format!("{:.0?}ms", avg_incorrect_time.as_millis()),
             }
         })
         .collect();
