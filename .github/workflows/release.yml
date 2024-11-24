@@ -75,23 +75,21 @@ jobs:
       - name: Package as archive
         run: |
           if [[ "${{ matrix.platform.target }}" == *"-windows-"* ]]; then
-             tar czvf ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz \
+             zip ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.zip \
                 ${{ matrix.platform.bin }}.exe
-
           else
               tar czvf ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz \
-                ${{ matrix.platform.bin }}      
+                ${{ matrix.platform.bin }}
           fi
-        if: startsWith( github.ref, 'refs/tags/v' )
-        
+
       # - name: Generate SHA-256
       #   run: shasum -a 256 ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz > ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz.sha256
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz
-          path: ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.tar.gz
+          name: ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.${{ matrix.platform.target == *"-windows-"* ? "zip" : "tar.gz" }}
+          path: ${{ matrix.platform.bin }}-v${{ steps.cargo_version.outputs.value }}-${{ matrix.platform.name }}.${{ matrix.platform.target == *"-windows-"* ? "zip" : "tar.gz" }}
 
       # - name: Upload digests
       #   uses: actions/upload-artifact@v4
