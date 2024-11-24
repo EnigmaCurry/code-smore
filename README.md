@@ -6,7 +6,6 @@
 
 This is a morse code practice tool.
 
-
 ## Install
 
 [Download the latest release for your platform.](https://github.com/EnigmaCurry/morse-quest/releases)
@@ -17,37 +16,9 @@ Or install via cargo ([crates.io/crates/morse-quest](https://crates.io/crates/mo
 cargo install morse-quest
 ```
 
-### Tab completion
-
-To install tab completion support, put this in your `~/.bashrc` (assuming you use Bash):
-
-```
-### Bash completion for morse-quest (Put this in ~/.bashrc)
-source <(morse-quest completions bash)
-```
-
-If you don't like to type out the full name `morse-quest`, you can make
-a shorter alias (`h`), as well as enable tab completion for the alias
-(`h`):
-
-```
-### Alias morse-quest as h (Put this in ~/.bashrc):
-alias h=morse-quest
-complete -F _morse-quest -o bashdefault -o default h
-```
-
-Completion for Zsh and/or Fish has also been implemented, but the
-author has not tested this:
-
-```
-### Zsh completion for morse-quest (Put this in ~/.zshrc):
-autoload -U compinit; compinit; source <(morse-quest completions zsh)
-
-### Fish completion for morse-quest (Put this in ~/.config/fish/config.fish):
-morse-quest completions fish | source
-```
-
 ## Usage
+
+`morse-quest` is a CLI program to run in your terminal (command window):
 
 ```
 $ morse-quest
@@ -98,6 +69,37 @@ The quiz supports these optional arguments:
       --cheat               Print the text character to the screen
       --random              True randomization of characters (not just shuffled)
 ```
+
+## Tab completion
+
+To install tab completion support, put this in your `~/.bashrc` (assuming you use Bash):
+
+```
+### Bash completion for morse-quest (Put this in ~/.bashrc)
+source <(morse-quest completions bash)
+```
+
+If you don't like to type out the full name `morse-quest`, you can make
+a shorter alias (`h`), as well as enable tab completion for the alias
+(`h`):
+
+```
+### Alias morse-quest as h (Put this in ~/.bashrc):
+alias h=morse-quest
+complete -F _morse-quest -o bashdefault -o default h
+```
+
+Completion for Zsh and/or Fish has also been implemented, but the
+author has not tested this:
+
+```
+### Zsh completion for morse-quest (Put this in ~/.zshrc):
+autoload -U compinit; compinit; source <(morse-quest completions zsh)
+
+### Fish completion for morse-quest (Put this in ~/.config/fish/config.fish):
+morse-quest completions fish | source
+```
+
 
 ## Development
 

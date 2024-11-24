@@ -17,7 +17,7 @@ pub fn start_quiz(
     char_set: &str,
     dot_duration: u32,
     tone_freq: f32,
-    cheat: bool,
+    text: bool,
     randomize: bool,
 ) {
     let paragraph = format!("Fast Enough Character Recognition quiz.\n\nMorse encoded characters will be played back to you one at a time and you must type the character you hear as soon as you recognize it.\n\nThis test will include {trials} trials. You will be timed in your response. You may stop the quiz at any time by pressing the ESC key.\n\nTo begin the quiz press the Enter key.");
@@ -68,7 +68,7 @@ pub fn start_quiz(
         eprintln!("Error disabling raw mode: {}", e);
     }
 
-    let results = reaction_time_quiz(char_set, trials, dot_duration, tone_freq, cheat, randomize);
+    let results = reaction_time_quiz(char_set, trials, dot_duration, tone_freq, text, randomize);
     print_results(&results, Duration::from_millis(dot_duration.into()));
 }
 
@@ -83,7 +83,7 @@ fn reaction_time_quiz(
     trials: u32,
     dot_duration: u32,
     tone_freq: f32,
-    cheat: bool,
+    text: bool,
     randomize: bool,
 ) -> QuizResult {
     let mut prompts = Vec::new();
@@ -126,13 +126,13 @@ fn reaction_time_quiz(
         // Clear the screen and display the letter
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
-        if cheat {
+        if text {
             print!("Type the letter: ");
             stdout.flush().unwrap();
         }
 
         play(&target_letter.to_string(), dot_duration, tone_freq);
-        if cheat {
+        if text {
             println!("{}", target_letter);
             stdout.flush().unwrap();
         }

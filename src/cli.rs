@@ -34,6 +34,18 @@ pub fn app() -> Command {
                 .help("Sets the tone frequency in Hz"),
         )
         .arg(
+            Arg::new("text")
+                .long("text")
+                .action(clap::ArgAction::SetTrue)
+                .help("Output text rather than sound"),
+        )
+        .arg(
+            Arg::new("sound")
+                .long("sound")
+                .action(clap::ArgAction::SetTrue)
+                .help("Output sound in addition to the --text option"),
+        )
+        .arg(
             Arg::new("log")
                 .long("log")
                 .global(true)
@@ -79,6 +91,16 @@ pub fn app() -> Command {
                 ),
         )
         .subcommand(Command::new("test-sound").about("Test that sound is working"))
+        .subcommand(
+            Command::new("read")
+                .about("Read text from stdin and output it as morse code")
+                .arg(
+                    Arg::new("morse")
+                        .long("morse")
+                        .action(clap::ArgAction::SetTrue)
+                        .help("Input text is already morse encoded"),
+                ),
+        )
         .subcommand(
             Command::new("completions")
                 .about("Generates shell completions script (tab completion)")

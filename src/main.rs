@@ -6,6 +6,7 @@ mod morse;
 mod prelude;
 
 use prelude::*;
+use std::io::BufRead;
 
 fn main() {
     let mut cmd = cli::app();
@@ -35,19 +36,25 @@ fn main() {
     }
 
     // Global arguments
-    let dot_duration = matches.get_one::<u32>("dot");
-    let wpm = matches.get_one::<u32>("wpm");
-    let tone_freq: f32 = *matches.get_one::<f32>("tone").unwrap();
+    let tone_freq: f32 = *matches
+        .get_one::<f32>("tone")
+        .expect("Missing --tone arg default");
+    let text = *matches
+        .get_one::<bool>("text")
+        .expect("Missing --text arg default");
+    let sound = *matches
+        .get_one::<bool>("sound")
+        .expect("Missing --sound arg default");
 
-    // Calculate dot duration if not explicitly provided
-    let dot_duration = match (dot_duration, wpm) {
+    // Calculate dot duration from wpm if not provided:
+    let dot_duration = match (matches.get_one::<u32>("dot"), matches.get_one::<u32>("wpm")) {
         (Some(_), Some(_)) => {
             eprintln!("Error: '--dot' and '--wpm' cannot be used together.");
             std::process::exit(1);
         }
         (Some(&dot), None) => dot,
         (None, Some(&wpm)) => morse::wpm_to_dot_length(wpm),
-        (None, None) => 60, // Default dot duration
+        (None, None) => 60, // Default dot duration @ 20WPM
     };
 
     // Handle the subcommands:
@@ -60,26 +67,59 @@ fn main() {
             let char_set = sub_matches
                 .get_one::<String>("characters")
                 .expect("Missing --character arg default");
-            let cheat = sub_matches
-                .get_one::<bool>("cheat")
-                .expect("Missing cheat arg default");
             let randomize = sub_matches
                 .get_one::<bool>("random")
                 .expect("Missing random arg default");
-            fecr_quiz::start_quiz(
-                *trials,
-                char_set,
-                dot_duration,
-                tone_freq,
-                *cheat,
-                *randomize,
-            );
+            fecr_quiz::start_quiz(*trials, char_set, dot_duration, tone_freq, text, *randomize);
             0
         }
         Some(("test-sound", _sub_matches)) => {
             let message = "If sound is working, you should hear this test message now.";
-            println!("{}", message);
             morse::play(message, dot_duration, tone_freq);
+            0
+        }
+        Some(("read", sub_matches)) => {
+            let morse = sub_matches
+                .get_one::<bool>("morse")
+                .expect("Missing --morse arg default");
+
+            let stdin = std::io::stdin();
+            if atty::is(atty::Stream::Stdin) {
+                println!("## Type text and it will be output as morse code.");
+                println!("## You may also pipe text to this same command.");
+                println!("## Press Enter after each line.");
+                println!("## When done, press Ctrl-D to exit.");
+            }
+
+            for line in stdin.lock().lines() {
+                match line {
+                    Ok(line) => {
+                        if text {
+                            // Output text instead of sound
+                            if *morse {
+                                // stdin is already morse encoded, convert it to text:
+                                eprintln!("TODO z");
+                            } else {
+                                // Encode stdin as morse code:
+                                println!("{}", morse::text_to_morse(&line));
+                                if sound {
+                                    morse::play("VVV", dot_duration, tone_freq);
+                                    morse::play(&line, dot_duration, tone_freq);
+                                }
+                            }
+                        } else {
+                            if *morse {
+                                // stdin is already morse encoded:
+                                eprintln!("TODO x");
+                            } else {
+                                // Convert stdin into morse and play it:
+                                eprintln!("TODO c");
+                            }
+                        }
+                    }
+                    Err(e) => eprintln!("Error reading line: {}", e),
+                }
+            }
             0
         }
         Some(("completions", sub_matches)) => {

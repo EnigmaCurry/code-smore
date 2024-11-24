@@ -50,13 +50,7 @@ pub fn wpm_to_dot_length(wpm: u32) -> u32 {
     1200 / wpm
 }
 
-fn encode_morse(text: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)> {
-    // dot_duration is duration of a dot in milliseconds
-    let dash_duration = dot_duration * 3; // Duration of a dash
-    let char_gap_duration = dot_duration * 3; // Gap between characters
-    let word_gap_duration = dot_duration * 7; // Gap between words
-
-    // Morse code mapping
+pub fn text_to_morse(text: &str) -> String {
     let morse_map = [
         ('A', ".-"),
         ('B', "-..."),
@@ -105,32 +99,44 @@ fn encode_morse(text: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)
         (')', "-.--.-"),
     ];
 
+    text.split_whitespace()
+        .map(|word| {
+            word.chars()
+                .filter_map(|ch| {
+                    morse_map.iter().find_map(|&(c, m)| {
+                        if c == ch.to_ascii_uppercase() {
+                            Some(m)
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect::<Vec<&str>>()
+                .join(" ")
+        })
+        .collect::<Vec<String>>()
+        .join("   ") // three spaces for word gaps
+}
+
+fn encode_morse(text: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)> {
+    let dash_duration = dot_duration * 3; // Duration of a dash
+    let char_gap_duration = dot_duration * 3; // Gap between characters
+    let word_gap_duration = dot_duration * 7; // Gap between words
+
+    let morse_code = text_to_morse(text);
+    let morse_code = morse_code.replace("   ", "/").replace("  ", " ");
+
     let mut tones = Vec::new();
-    let words: Vec<&str> = text.split_whitespace().collect();
-    for (i, word) in words.iter().enumerate() {
-        for ch in word.chars() {
-            if let Some(morse) = morse_map.iter().find_map(|&(c, m)| {
-                if c == ch.to_ascii_uppercase() {
-                    Some(m)
-                } else {
-                    None
-                }
-            }) {
-                for symbol in morse.chars() {
-                    let duration = match symbol {
-                        '.' => dot_duration,
-                        '-' => dash_duration,
-                        _ => continue,
-                    };
-                    tones.push((tone_freq, duration));
-                    tones.push((0.0, dot_duration)); // Gap between dots/dashes
-                }
-                tones.push((0.0, char_gap_duration)); // Gap between characters
-            }
+
+    for symbol in morse_code.chars() {
+        match symbol {
+            '.' => tones.push((tone_freq, dot_duration)),
+            '-' => tones.push((tone_freq, dash_duration)),
+            ' ' => tones.push((0.0, char_gap_duration)),
+            '/' => tones.push((0.0, word_gap_duration)),
+            _ => {}
         }
-        if i < words.len() - 1 {
-            tones.push((0.0, word_gap_duration)); // Gap between words (not after the last word)
-        }
+        tones.push((0.0, dot_duration)); // Gap between dots/dashes
     }
 
     tones
