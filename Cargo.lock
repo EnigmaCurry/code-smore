@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "morse-quest"
-version = "0.1.20"
+version = "0.1.21"
 dependencies = [
  "atty",
  "clap",
