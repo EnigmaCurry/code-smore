@@ -63,7 +63,17 @@ fn main() {
             let cheat = sub_matches
                 .get_one::<bool>("cheat")
                 .expect("Missing cheat arg default");
-            fecr_quiz::start_quiz(*trials, char_set, dot_duration, tone_freq, *cheat);
+            let randomize = sub_matches
+                .get_one::<bool>("random")
+                .expect("Missing random arg default");
+            fecr_quiz::start_quiz(
+                *trials,
+                char_set,
+                dot_duration,
+                tone_freq,
+                *cheat,
+                *randomize,
+            );
             0
         }
         Some(("test-sound", _sub_matches)) => {

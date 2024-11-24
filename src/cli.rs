@@ -54,7 +54,11 @@ pub fn app() -> Command {
         .subcommand(
             Command::new("fecr-quiz")
                 .about("Start the Fast Enough Character Recognition quiz")
-                .arg(Arg::new("characters").default_value("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"))
+                .arg(
+                    Arg::new("characters")
+                        .default_value("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+                        .help("Character set to shuffle/randomize for the quiz"),
+                )
                 .arg(
                     Arg::new("trials")
                         .long("trials")
@@ -65,6 +69,12 @@ pub fn app() -> Command {
                     Arg::new("cheat")
                         .long("cheat")
                         .help("Print the text character to the screen")
+                        .action(clap::ArgAction::SetTrue),
+                )
+                .arg(
+                    Arg::new("random")
+                        .long("random")
+                        .help("True randomization of characters (not just shuffled)")
                         .action(clap::ArgAction::SetTrue),
                 ),
         )

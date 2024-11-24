@@ -12,7 +12,14 @@ use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
 use textwrap::wrap;
 
-pub fn start_quiz(trials: u32, char_set: &str, dot_duration: u32, tone_freq: f32, cheat: bool) {
+pub fn start_quiz(
+    trials: u32,
+    char_set: &str,
+    dot_duration: u32,
+    tone_freq: f32,
+    cheat: bool,
+    randomize: bool,
+) {
     let paragraph = format!("Fast Enough Character Recognition quiz.\n\nMorse encoded characters will be played back to you one at a time and you must type the character you hear as soon as you recognize it.\n\nThis test will include {trials} trials. You will be timed in your response. You may stop the quiz at any time by pressing the ESC key.\n\nTo begin the quiz press the Enter key.");
 
     for line in wrap(&paragraph, 70) {
@@ -59,7 +66,7 @@ pub fn start_quiz(trials: u32, char_set: &str, dot_duration: u32, tone_freq: f32
         eprintln!("Error disabling raw mode: {}", e);
     }
 
-    let results = reaction_time_quiz(char_set, trials, dot_duration, tone_freq, cheat);
+    let results = reaction_time_quiz(char_set, trials, dot_duration, tone_freq, cheat, randomize);
     print_results(&results, Duration::from_millis(dot_duration.into()));
 }
 
@@ -75,6 +82,7 @@ fn reaction_time_quiz(
     dot_duration: u32,
     tone_freq: f32,
     cheat: bool,
+    randomize: bool,
 ) -> QuizResult {
     let mut prompts = Vec::new();
     let mut responses = Vec::new();
@@ -94,13 +102,21 @@ fn reaction_time_quiz(
 
     let mut rng = rand::thread_rng();
 
-    for _ in 0..trials {
-        // Generate a random letter from the char set
-        let target_letter = char_set.chars().collect::<Vec<_>>();
-        let target_letter = target_letter
-            .choose(&mut rng)
-            .expect("Could not generate random character");
-        prompts.push(*target_letter);
+    if randomize {
+        for _ in 0..trials {
+            // Generate a random letter from the char set
+            let target_letter = char_set.chars().collect::<Vec<_>>();
+            let target_letter = target_letter
+                .choose(&mut rng)
+                .expect("Could not generate random character");
+            prompts.push(*target_letter);
+        }
+    } else {
+        let mut target_letters = char_set.chars().collect::<Vec<_>>();
+        target_letters.shuffle(&mut rng);
+        for i in 0..trials {
+            prompts.push(target_letters[i as usize % target_letters.len()]);
+        }
     }
     for i in 0..trials {
         std::thread::sleep(Duration::from_millis(500));
