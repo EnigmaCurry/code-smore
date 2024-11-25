@@ -10,10 +10,7 @@ use rand::prelude::SliceRandom;
 use std::collections::HashMap;
 use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
-use tabled::settings::{
-    style::{BorderColor, Style},
-    Color,
-};
+use tabled::settings::style::Style;
 use tabled::{Table, Tabled};
 use textwrap::wrap;
 
