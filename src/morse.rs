@@ -1,5 +1,6 @@
 use rodio::{OutputStream, Sink, Source};
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 
 use std::collections::HashMap;
@@ -224,12 +225,15 @@ impl MorsePlayer {
     }
 
     pub fn play_nonblocking_tone(&self, dot_duration: u32, tone_freq: f32) {
-        let mut tones = Vec::new();
-        tones.push((tone_freq, dot_duration));
-        let sink = Sink::try_new(&self.stream_handle).unwrap();
-        play_morse_code(tones, &sink);
+        let stream_handle = self.stream_handle.clone();
+        thread::spawn(move || {
+            let mut tones = Vec::new();
+            tones.push((tone_freq, dot_duration));
+            let sink = Sink::try_new(&stream_handle).unwrap();
+            play_morse_code(tones, &sink);
+            sink.sleep_until_end(); // Blocks within this thread, not the main one
+        });
     }
-
     pub fn play_morse(&self, message: &str, dot_duration: u32, tone_freq: f32) {
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         let tones = morse_to_tones(message, dot_duration, tone_freq);

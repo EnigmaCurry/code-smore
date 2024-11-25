@@ -167,7 +167,7 @@ fn reaction_time_quiz(
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
         if text || calibration {
-            print!("Type the letter: {target_letter}");
+            print!("Type the letter:");
             stdout.flush().unwrap();
         }
 
@@ -175,6 +175,11 @@ fn reaction_time_quiz(
             player.play_nonblocking_tone(dot_duration, tone_freq);
         } else {
             player.play(&target_letter.to_string(), dot_duration, tone_freq);
+        }
+
+        if text || calibration {
+            println!(" {target_letter}");
+            stdout.flush().unwrap();
         }
 
         // Start the timer
