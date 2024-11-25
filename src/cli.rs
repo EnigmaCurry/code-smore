@@ -109,12 +109,6 @@ pub fn app() -> Command {
                         .value_parser(value_parser!(u32)),
                 )
                 .arg(
-                    Arg::new("cheat")
-                        .long("cheat")
-                        .help("Print the text character to the screen")
-                        .action(clap::ArgAction::SetTrue),
-                )
-                .arg(
                     Arg::new("random")
                         .long("random")
                         .help(
