@@ -150,10 +150,10 @@ fn main() {
         }
         Some(("listen", sub_matches)) => {
             //
-            let morse = sub_matches
+            let _morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
-            let device = sub_matches
+            let _device = sub_matches
                 .get_one::<String>("device")
                 .map(|s| s.to_string());
             let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
@@ -161,7 +161,17 @@ fn main() {
                 .get_one::<f32>("threshold")
                 .map(|s| *s as f32)
                 .unwrap_or(0.3);
-            listen::listen(&file.expect("missing file"), threshold);
+            let bandwidth = sub_matches
+                .get_one::<f32>("bandwidth")
+                .map(|s| *s as f32)
+                .unwrap_or(200.0);
+            listen::listen(
+                &file.expect("missing file"),
+                tone_freq,
+                bandwidth,
+                threshold,
+                dot_duration,
+            );
             0
         }
         Some(("completions", sub_matches)) => {

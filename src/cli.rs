@@ -168,6 +168,25 @@ pub fn app() -> Command {
                         ),
                 )
                 .arg(
+                    Arg::new("bandwidth")
+                        .short('W')
+                        .long("bandwidth")
+                        .value_parser(|v: &str| {
+                            v.parse::<f32>()
+                                .map_err(|_| String::from("Bandwidth must be a valid floating-point number"))
+                                .and_then(|val| {
+                                    if (0.0..=1000.0).contains(&val) {
+                                        Ok(val)
+                                    } else {
+                                        Err(String::from("Threshold must be between 0.0Hz and 1000.0Hz"))
+                                    }
+                                })
+                        })
+                        .help(
+                            "Minimal signal value threshold [0.0..1.0]",
+                        ),
+                )
+                .arg(
                     Arg::new("file")
                         .short('f')
                         .long("file")
