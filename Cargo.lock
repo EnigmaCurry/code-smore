@@ -251,6 +251,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bfbf56724aa9eca8afa4fcfadeb479e722935bb2a0900c2d37e0cc477af0688"
 
 [[package]]
+name = "code-smore"
+version = "0.1.23"
+dependencies = [
+ "atty",
+ "clap",
+ "clap_complete",
+ "crossterm",
+ "dirs",
+ "env_logger",
+ "log",
+ "rand",
+ "regex",
+ "rodio",
+ "shell-words",
+ "tabled",
+ "textwrap",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -645,25 +664,6 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "code-smore"
-version = "0.1.23"
-dependencies = [
- "atty",
- "clap",
- "clap_complete",
- "crossterm",
- "dirs",
- "env_logger",
- "log",
- "rand",
- "regex",
- "rodio",
- "shell-words",
- "tabled",
- "textwrap",
 ]
 
 [[package]]
