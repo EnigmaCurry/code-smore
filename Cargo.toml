@@ -1,15 +1,15 @@
 [package]
-name = "morse-quest"
+name = "code-smore"
 description = "A morse code practice tool"
 version = "0.1.23"
 edition = "2021"
-repository = "https://github.com/EnigmaCurry/morse-quest"
-homepage = "https://github.com/EnigmaCurry/morse-quest"
+repository = "https://github.com/EnigmaCurry/code-smore"
+homepage = "https://github.com/EnigmaCurry/code-smore"
 license = "MIT"
 keywords = []
 categories = ["command-line-utilities"]
 readme = "README.md"
-documentation = "https://docs.rs/morse-quest"
+documentation = "https://docs.rs/code-smore"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)'] }

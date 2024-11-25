@@ -648,7 +648,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "morse-quest"
+name = "code-smore"
 version = "0.1.23"
 dependencies = [
  "atty",

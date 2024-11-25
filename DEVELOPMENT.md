@@ -20,9 +20,9 @@ rustup-init ## just press enter when prompted for default selection
 ## Clone source repository
 
 ```
-git clone git@github.com:EnigmaCurry/morse-quest.git \
-  ~/git/vendor/EnigmaCurry/morse-quest
-cd ~/git/vendor/EnigmaCurry/morse-quest
+git clone git@github.com:EnigmaCurry/code-smore.git \
+  ~/git/vendor/EnigmaCurry/code-smore
+cd ~/git/vendor/EnigmaCurry/code-smore
 ```
 
 ## Install development dependencies
@@ -32,7 +32,7 @@ cargo install just
 just deps
 ```
 
-## Build and run development morse-quest
+## Build and run development code-smore
 
 ```
 just run help
@@ -49,18 +49,18 @@ just build --release
 
 ```
 ## Add this to ~/.bashrc or equivalent:
-alias morse-quest='just -f ~/git/vendor/EnigmaCurry/morse-quest/Justfile run'
-alias h=morse-quest
+alias code-smore='just -f ~/git/vendor/EnigmaCurry/code-smore/Justfile run'
+alias h=code-smore
 ```
 
-Now you can run `morse-quest`, or simply `h`, from any directory, with
+Now you can run `code-smore`, or simply `h`, from any directory, with
 any arguments, and it will automatically rebuild from source, and then
 run it with those args.
 
 ## Testing
 
 This project has incomplete testing. [See the latest coverage
-report](https://EnigmaCurry.github.io/morse-quest/coverage/master/).
+report](https://EnigmaCurry.github.io/code-smore/coverage/master/).
 
 ## Run tests
 

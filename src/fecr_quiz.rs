@@ -445,7 +445,7 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
         let average = average_time.as_millis();
         println!("\nYour calibrated baseline score is: {average}");
         println!("Provide this score as your baseline to the FECR quiz:");
-        println!("\n   morse-quest fecr-quiz -b {average}")
+        println!("\n   code-smore fecr-quiz -b {average}")
     } else {
         println!("Baseline latency subtracted: {baseline}ms");
         println!(

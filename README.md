@@ -1,28 +1,28 @@
-# morse-quest
+# code-smore
 
-[![Crates.io](https://img.shields.io/crates/v/morse-quest?color=blue
-)](https://crates.io/crates/morse-quest)
-[![Coverage](https://img.shields.io/badge/Coverage-Report-purple)](https://EnigmaCurry.github.io/morse-quest/coverage/master/)
+[![Crates.io](https://img.shields.io/crates/v/code-smore?color=blue
+)](https://crates.io/crates/code-smore)
+[![Coverage](https://img.shields.io/badge/Coverage-Report-purple)](https://EnigmaCurry.github.io/code-smore/coverage/master/)
 
 This is a morse code practice tool.
 
 ## Install
 
-[Download the latest release for your platform.](https://github.com/EnigmaCurry/morse-quest/releases)
+[Download the latest release for your platform.](https://github.com/EnigmaCurry/code-smore/releases)
 
-Or install via cargo ([crates.io/crates/morse-quest](https://crates.io/crates/morse-quest)):
+Or install via cargo ([crates.io/crates/code-smore](https://crates.io/crates/code-smore)):
 
 ```
-$ cargo install morse-quest
+$ cargo install code-smore
 ```
 
 ## Usage
 
-`morse-quest` is a CLI program to run in your terminal (command window):
+`code-smore` is a CLI program to run in your terminal (command window):
 
 ```
-$ morse-quest
-Usage: morse-quest [OPTIONS] [COMMAND]
+$ code-smore
+Usage: code-smore [OPTIONS] [COMMAND]
 
 Commands:
   fecr-quiz   Start the Fast Enough Character Recognition quiz
@@ -48,7 +48,7 @@ one or the other.
 To test that your sound device is working, run this command:
 
 ```
-$ morse-quest test-sound
+$ code-smore test-sound
 ```
 
 You should hear an example 42s transmission at 20 WPM.
@@ -63,7 +63,7 @@ Before you begin the quiz you should test your baseline keyboard
 skills and measure your personal input latency:
 
 ```
-$ morse-quest fecr-quiz -B
+$ code-smore fecr-quiz -B
 Your calibrated baseline score is: 610
 ```
 
@@ -72,7 +72,7 @@ Run the FECR quiz by providing the set of characters you want to quiz
 `610`):
 
 ```
-$ morse-quest fecr-quiz -b 610 -c aeiou
+$ code-smore fecr-quiz -b 610 -c aeiou
 ```
 
 The quiz supports these optional named arguments:
@@ -92,26 +92,26 @@ You can send text to have it encoded into morse code:
 To encode plain text and play back morse code as sound:
 
 ```
-$ echo "Hello World" | morse-quest read
+$ echo "Hello World" | code-smore read
 ```
 
 To encode plain text to morse code text (no sound):
 
 ```
-$ echo "Hello World" | morse-quest read --text
+$ echo "Hello World" | code-smore read --text
 .... . .-.. .-.. --- / .-- --- .-. .-.. -..
 ```
 
 To encode plain text and output morse code text and sound:
 
 ```
-$ echo "Hello World" | morse-quest read --text --sound
+$ echo "Hello World" | code-smore read --text --sound
 ```
 
 To read plain text interactively and output morse code and sound:
 
 ```
-$ morse-quest read --text --sound
+$ code-smore read --text --sound
 ## Type some text and it will be output as morse code.
 ## You may also pipe text to this same command.
 ## Press Enter after each line.
@@ -123,7 +123,7 @@ Encode text and playback as separate steps in a pipeline, playback at 10WPM:
 
 ```
 ## --morse expects text to already be morse encoded:
-$ echo "Hello World" | morse-quest read --text | morse-quest read --morse --wpm 10
+$ echo "Hello World" | code-smore read --text | code-smore read --morse --wpm 10
 ```
 
 ## Tab completion
@@ -131,29 +131,29 @@ $ echo "Hello World" | morse-quest read --text | morse-quest read --morse --wpm 
 To install tab completion support, put this in your `~/.bashrc` (assuming you use Bash):
 
 ```
-### Bash completion for morse-quest (Put this in ~/.bashrc)
-source <(morse-quest completions bash)
+### Bash completion for code-smore (Put this in ~/.bashrc)
+source <(code-smore completions bash)
 ```
 
-If you don't like to type out the full name `morse-quest`, you can make
+If you don't like to type out the full name `code-smore`, you can make
 a shorter alias (`h`), as well as enable tab completion for the alias
 (`h`):
 
 ```
-### Alias morse-quest as h (Put this in ~/.bashrc):
-alias h=morse-quest
-complete -F _morse-quest -o bashdefault -o default h
+### Alias code-smore as h (Put this in ~/.bashrc):
+alias h=code-smore
+complete -F _code-smore -o bashdefault -o default h
 ```
 
 Completion for Zsh and/or Fish has also been implemented, but the
 author has not tested this:
 
 ```
-### Zsh completion for morse-quest (Put this in ~/.zshrc):
-autoload -U compinit; compinit; source <(morse-quest completions zsh)
+### Zsh completion for code-smore (Put this in ~/.zshrc):
+autoload -U compinit; compinit; source <(code-smore completions zsh)
 
-### Fish completion for morse-quest (Put this in ~/.config/fish/config.fish):
-morse-quest completions fish | source
+### Fish completion for code-smore (Put this in ~/.config/fish/config.fish):
+code-smore completions fish | source
 ```
 
 
