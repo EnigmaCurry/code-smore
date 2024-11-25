@@ -72,15 +72,17 @@ Run the FECR quiz by providing the set of characters you want to quiz
 `610`):
 
 ```
-$ morse-quest fecr-quiz -b 610 aeiou
+$ morse-quest fecr-quiz -b 610 -c aeiou
 ```
 
 The quiz supports these optional named arguments:
 
 ```
-      --trials <trials>     [default: 128]
-      --cheat               Print the text character to the screen
-      --random              True randomization of characters (not just shuffled)
+  -c, --characters <characters>  Character set to shuffle/randomize for the quiz [default: ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890]
+  -b, --baseline <baseline>      The baseline keyboard input latency in milliseconds [default: 500]
+      --random    True randomization of characters (not just shuffled)
+      --trials <trials>          [default: 26]
+      --text                     Output text (cheat)
 ```
 
 ## Read and encode from stdin
