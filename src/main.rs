@@ -2,6 +2,7 @@ use clap_complete::shells::Shell;
 
 mod cli;
 mod fecr_quiz;
+mod listen;
 mod morse;
 mod prelude;
 
@@ -145,6 +146,22 @@ fn main() {
                     Err(e) => eprintln!("Error reading line: {}", e),
                 }
             }
+            0
+        }
+        Some(("listen", sub_matches)) => {
+            //
+            let morse = sub_matches
+                .get_one::<bool>("morse")
+                .expect("Missing --morse arg default");
+            let device = sub_matches
+                .get_one::<String>("device")
+                .map(|s| s.to_string());
+            let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
+            let threshold = sub_matches
+                .get_one::<f32>("threshold")
+                .map(|s| *s as f32)
+                .unwrap_or(0.3);
+            listen::listen(&file.expect("missing file"), threshold);
             0
         }
         Some(("completions", sub_matches)) => {
