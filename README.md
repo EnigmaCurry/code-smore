@@ -59,20 +59,30 @@ The FECR quiz will examine your skills at recognizing single
 characters from the given character set (the alphanumeric set is used
 by default if not provided).
 
-Before you begin the quiz you should test your baseline keyboard
-skills and measure your personal input latency:
+Before you begin the quiz you may want to evaluate your baseline keyboard
+skills.  The fecr-quiz provides an option to measure your keyboard reaction 
+time from visual stimuli:
 
 ```
 $ code-smore fecr-quiz -B
 Your calibrated baseline score is: 610
+Provide this score as your baseline to the FECR quiz
 ```
 
 Run the FECR quiz by providing the set of characters you want to quiz
 (e.g., `aeiou`.) and your personal baseline calibration value (e.g.,
 `610`):
-
 ```
 $ code-smore fecr-quiz -b 610 -c aeiou
+```
+If you choose not to provide a personal baseline value, the default of 500 milliseconds will be used.
+
+Another technique for evaluating your baseline reaction time is to use
+a simplified fecr-quiz which finds your reaction time to the simplest Morse code 
+letters, E and T.  
+
+```
+$ code-smore fecr-quiz -b 0 -c ET --trials 8 --random
 ```
 
 The quiz supports these optional named arguments:
