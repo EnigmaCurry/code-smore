@@ -10,7 +10,10 @@ use rand::prelude::SliceRandom;
 use std::collections::HashMap;
 use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
-use tabled::settings::Style;
+use tabled::settings::{
+    style::{BorderColor, Style},
+    Color,
+};
 use tabled::{Table, Tabled};
 use textwrap::wrap;
 
@@ -111,8 +114,8 @@ pub fn start_quiz(
 
 struct QuizResult {
     prompts: Vec<char>,
-    responses: Vec<bool>,
-    reaction_times: Vec<Duration>,
+    responses: Vec<Option<bool>>,
+    reaction_times: Vec<Option<Duration>>,
 }
 
 fn reaction_time_quiz(
@@ -201,6 +204,13 @@ fn reaction_time_quiz(
                         if event.code == KeyCode::Esc {
                             disable_raw_mode().unwrap();
                             println!("\nQuiz terminated.");
+                            // Truncate prompts to the same size as `responses`:
+                            if responses.len() < prompts.len() {
+                                prompts.truncate(responses.len());
+                            }
+                            if reaction_times.len() > responses.len() {
+                                reaction_times.truncate(responses.len());
+                            }
                             return QuizResult {
                                 prompts,
                                 responses,
@@ -229,9 +239,9 @@ fn reaction_time_quiz(
         } else {
             Duration::from_millis(0)
         };
-        reaction_times.push(clamped_duration);
+        reaction_times.push(Some(clamped_duration));
 
-        responses.push(is_correct);
+        responses.push(Some(is_correct));
     }
 
     // Disable raw mode after the quiz
@@ -252,15 +262,26 @@ struct SummaryRow {
     count: u32,
     avg_correct_time: String,
     avg_incorrect_time: String,
+    times_correct: u32,
+    times_incorrect: u32,
 }
 
 fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool, baseline: u32) {
     println!("\nTest complete!\n");
     let total = results.prompts.len();
-    let correct = results.responses.iter().filter(|&&r| r).count();
+    let correct = results
+        .responses
+        .iter()
+        .filter_map(|&r| r)
+        .filter(|&r| r)
+        .count();
     let incorrect = total - correct;
 
-    let total_time: Duration = results.reaction_times.iter().sum();
+    let total_time: Duration = results
+        .reaction_times
+        .iter()
+        .filter_map(|&time| time) // Filter out None values and keep Some(Duration)
+        .sum();
     let average_time = if total > 0 {
         total_time / total as u32
     } else {
@@ -270,15 +291,29 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
     let correct_times: Vec<_> = results
         .reaction_times
         .iter()
+        .filter_map(|&time| time)
         .zip(results.responses.iter())
-        .filter_map(|(&time, &is_correct)| if is_correct { Some(time) } else { None })
+        .filter_map(|(time, &is_correct)| {
+            if is_correct.unwrap_or_default() {
+                Some(time)
+            } else {
+                None
+            }
+        })
         .collect();
 
     let incorrect_times: Vec<_> = results
         .reaction_times
         .iter()
+        .filter_map(|&time| time)
         .zip(results.responses.iter())
-        .filter_map(|(&time, &is_correct)| if !is_correct { Some(time) } else { None })
+        .filter_map(|(time, &is_correct)| {
+            if !is_correct.unwrap_or_default() {
+                Some(time)
+            } else {
+                None
+            }
+        })
         .collect();
 
     let average_correct_time = if !correct_times.is_empty() {
@@ -294,46 +329,61 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
     };
 
     // Summary output by character
-    let mut character_stats: HashMap<char, (u32, Duration, Duration)> = HashMap::new();
+    let mut character_stats: HashMap<char, (u32, Duration, Duration, u32, u32)> = HashMap::new();
 
     for (i, &prompt) in results.prompts.iter().enumerate() {
-        let entry =
-            character_stats
-                .entry(prompt)
-                .or_insert((0, Duration::default(), Duration::default()));
+        let entry = character_stats.entry(prompt).or_insert((
+            0,
+            Duration::default(),
+            Duration::default(),
+            0,
+            0,
+        ));
         entry.0 += 1; // Increment trial count
 
-        if results.responses[i] {
-            entry.1 += results.reaction_times[i]; // Add to correct times
-        } else {
-            entry.2 += results.reaction_times[i]; // Add to incorrect times
+        match results.responses[i] {
+            Some(res) => {
+                if res {
+                    entry.1 += results.reaction_times[i].expect("Reaction time not found");
+                    entry.3 += 1
+                // Add to correct times
+                } else {
+                    entry.2 += results.reaction_times[i].expect("Reaction time not found");
+                    entry.4 += 1
+                    // Add to incorrect times
+                }
+            }
+            None => {}
         }
     }
 
     let mut summary: Vec<SummaryRow> = character_stats
         .into_iter()
-        .map(|(character, (count, correct_time, incorrect_time))| {
-            let avg_correct_time = if count > 0 {
-                correct_time / count as u32
-            } else {
-                Duration::default()
-            };
-            let avg_incorrect_time = if count > 0 {
-                incorrect_time / count as u32
-            } else {
-                Duration::default()
-            };
+        .map(
+            |(character, (count, correct_time, incorrect_time, times_correct, times_incorrect))| {
+                let avg_correct_time = if count > 0 {
+                    correct_time / count as u32
+                } else {
+                    Duration::default()
+                };
+                let avg_incorrect_time = if count > 0 {
+                    incorrect_time / count as u32
+                } else {
+                    Duration::default()
+                };
 
-            SummaryRow {
-                character,
-                count,
-                avg_correct_time: format!("{:.0?}ms", avg_correct_time.as_millis()),
-                avg_incorrect_time: format!("{:.0?}ms", avg_incorrect_time.as_millis()),
-            }
-        })
+                SummaryRow {
+                    character,
+                    count,
+                    avg_correct_time: format!("{:.0?}ms", avg_correct_time.as_millis()),
+                    avg_incorrect_time: format!("{:.0?}ms", avg_incorrect_time.as_millis()),
+                    times_correct,
+                    times_incorrect,
+                }
+            },
+        )
         .collect();
 
-    // Sort by avg_correct_time
     summary.sort_by(|a, b| {
         let avg_a = a
             .avg_correct_time
@@ -345,13 +395,18 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
             .replace("ms", "")
             .parse::<f64>()
             .unwrap_or_default();
-        avg_a
-            .partial_cmp(&avg_b)
+
+        // Sort primarily by times_incorrect, then by avg_correct_time
+        (a.times_incorrect, avg_a)
+            .partial_cmp(&(b.times_incorrect, avg_b))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
+
     // Create and style the table.
-    let mut table = Table::new(summary);
-    let table = table.with(Style::rounded()); // Rounded ASCII style
+    let mut table = Table::new(&summary);
+    let table = table.with(Style::rounded());
+
+    // Highlight rows where `times_incorrect > 0`
 
     println!("\nCharacter Performance Summary:\n");
     println!("{}", table);
