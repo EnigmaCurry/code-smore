@@ -8,7 +8,7 @@ This is a morse code practice tool.
 
 ## Install
 
-[Download the latest release for your platform.](https://github.com/EnigmaCurry/code-smore/releases)
+[Download the latest release for your platform.](https://github.com/EnigmaCurry/code-smore/releases/latest)
 
 Or install via cargo ([crates.io/crates/code-smore](https://crates.io/crates/code-smore)):
 
