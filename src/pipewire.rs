@@ -1,41 +1,88 @@
+use crate::pipewire::spa::pod::Pod;
 use crate::prelude::*;
 use pipewire as pw;
 use pw::properties::properties;
-use pw::{context::Context, main_loop::MainLoop, registry::Registry, spa};
-use spa::param::format::{MediaSubtype, MediaType};
-use spa::param::format_utils;
-use spa::pod::Pod;
-use std::convert::TryInto;
+use pw::{context::Context, main_loop::MainLoop, spa};
 use std::mem;
+
+use iir_filters::filter::{DirectForm2Transposed, Filter};
+use iir_filters::filter_design::{butter, FilterType};
+use iir_filters::sos::zpk2sos;
+
+struct BandpassFilter {
+    filter: DirectForm2Transposed,
+}
+impl BandpassFilter {
+    /// Creates a new BandpassFilter with the given parameters.
+    ///
+    /// # Arguments
+    /// * `order` - The order of the filter.
+    /// * `cutoff_low` - The lower cutoff frequency in Hz.
+    /// * `cutoff_hi` - The upper cutoff frequency in Hz.
+    /// * `fs` - The sampling frequency in Hz.
+    pub fn new(
+        order: usize,
+        cutoff_low: f64,
+        cutoff_hi: f64,
+        fs: f64,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let zpk = butter(
+            order as u32,
+            FilterType::BandPass(cutoff_low, cutoff_hi),
+            fs,
+        )?;
+        let sos = zpk2sos(&zpk, None)?;
+        let filter = DirectForm2Transposed::new(&sos);
+
+        Ok(Self { filter })
+    }
+
+    /// Applies the bandpass filter to an input signal.
+    ///
+    /// # Arguments
+    /// * `input` - A slice of input signal samples.
+    ///
+    /// # Returns
+    /// A `Vec<f64>` containing the filtered signal.
+    pub fn apply(&mut self, input: &[f64]) -> Vec<f64> {
+        input.iter().map(|&x| self.filter.filter(x)).collect()
+    }
+}
 
 struct UserData {
     format: spa::param::audio::AudioInfoRaw,
     cursor_move: bool,
+    filter: Option<BandpassFilter>,
 }
 
 pub fn main() -> Result<(), pipewire::Error> {
+    // Initialization code...
     pw::init();
     let mainloop = MainLoop::new(None)?;
     let context = Context::new(&mainloop)?;
     let core = context.connect(None)?;
     let registry = core.get_registry().expect("Invalid pipewire registry");
+
     let data = UserData {
         format: Default::default(),
         cursor_move: false,
+        filter: None,
     };
 
-    let mut props = properties!(
+    let props = properties!(
         *pw::keys::MEDIA_TYPE => "Audio",
         *pw::keys::MEDIA_CATEGORY => "Capture",
         *pw::keys::MEDIA_ROLE => "Communication",
         *pw::keys::STREAM_CAPTURE_SINK => "true"
     );
 
+    // Initialize the stream with the core and properties
     let stream = pw::stream::Stream::new(&core, "audio-capture", props)?;
 
     let _listener = stream
         .add_local_listener_with_user_data(data)
         .param_changed(|_, user_data, id, param| {
+            // Handle format changes...
             // NULL means to clear the format
             let Some(param) = param else {
                 return;
@@ -43,31 +90,14 @@ pub fn main() -> Result<(), pipewire::Error> {
             if id != pw::spa::param::ParamType::Format.as_raw() {
                 return;
             }
-
-            let (media_type, media_subtype) = match format_utils::parse_format(param) {
-                Ok(v) => v,
-                Err(_) => return,
-            };
-
-            // only accept raw audio
-            if media_type != MediaType::Audio || media_subtype != MediaSubtype::Raw {
-                return;
-            }
-
-            // call a helper function to parse the format for us.
-            user_data
-                .format
-                .parse(param)
-                .expect("Failed to parse param changed to AudioInfoRaw");
-
-            info!(
-                "capturing rate:{} channels:{}",
-                user_data.format.rate(),
-                user_data.format.channels()
+            user_data.format.parse(param).unwrap();
+            user_data.filter = Some(
+                BandpassFilter::new(5, 500.0, 1000.0, user_data.format.rate() as f64)
+                    .expect("expected filter"),
             );
         })
         .process(|stream, user_data| match stream.dequeue_buffer() {
-            None => println!("out of buffers"),
+            None => println!("Out of buffers"),
             Some(mut buffer) => {
                 let datas = buffer.datas_mut();
                 if datas.is_empty() {
@@ -79,25 +109,52 @@ pub fn main() -> Result<(), pipewire::Error> {
                 let n_samples = data.chunk().size() / (mem::size_of::<f32>() as u32);
 
                 if let Some(samples) = data.data() {
+                    // Interpret the buffer as f32 samples
+                    let float_samples: &mut [f32] = bytemuck::cast_slice_mut(samples);
+
                     if user_data.cursor_move {
+                        // Move the cursor up for clean output
                         print!("\x1B[{}A", n_channels + 1);
                     }
-                    //debug!("captured {} samples", n_samples / n_channels);
                     println!();
+
                     for c in 0..n_channels {
                         let mut max: f32 = 0.0;
-                        for n in (c..n_samples).step_by(n_channels as usize) {
-                            let start = n as usize * mem::size_of::<f32>();
-                            let end = start + mem::size_of::<f32>();
-                            let chan = &samples[start..end];
-                            let f = f32::from_le_bytes(chan.try_into().unwrap());
-                            max = max.max(f.abs());
+
+                        // Extract the samples for the current channel
+                        let channel_samples: Vec<f32> = float_samples
+                            .iter()
+                            .skip(c.try_into().expect("Invalid skip in float_samples"))
+                            .step_by(n_channels as usize)
+                            .cloned()
+                            .collect();
+
+                        // Convert Vec<f32> to Vec<f64>
+                        let channel_samples_f64: Vec<f64> =
+                            channel_samples.iter().map(|&s| s as f64).collect();
+
+                        // Apply the bandpass filter
+                        let filtered_samples = if let Some(filter) = &mut user_data.filter {
+                            filter.apply(&channel_samples_f64)
+                        } else {
+                            channel_samples_f64
+                        };
+
+                        // Convert Vec<f64> back to Vec<f32>
+                        let filtered_samples_f32: Vec<f32> =
+                            filtered_samples.iter().map(|&s| s as f32).collect();
+
+                        // Write the filtered samples back to the buffer
+                        for (i, &sample) in filtered_samples_f32.iter().enumerate() {
+                            let idx = i * n_channels as usize + c as usize;
+                            float_samples[idx] = sample;
+                            max = max.max(sample.abs());
                         }
 
+                        // Visualize the peak
                         let peak = ((max * 30.0) as usize).clamp(0, 39);
-
                         println!(
-                            "channel {}: |{:>w1$}{:w2$}| peak:{}",
+                            "channel {}: |{:>w1$}{:w2$}| peak: {:.3}",
                             c,
                             "*",
                             "",
@@ -106,6 +163,7 @@ pub fn main() -> Result<(), pipewire::Error> {
                             w2 = 40 - peak
                         );
                     }
+
                     user_data.cursor_move = true;
                 }
             }
@@ -143,9 +201,8 @@ pub fn main() -> Result<(), pipewire::Error> {
             | pw::stream::StreamFlags::RT_PROCESS,
         &mut params,
     )?;
-
+    info!("well");
     // and wait while we let things run
     mainloop.run();
-
     Ok(())
 }
