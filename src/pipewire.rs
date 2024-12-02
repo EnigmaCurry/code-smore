@@ -1,53 +1,9 @@
+use crate::filter::*;
 use crate::pipewire::spa::pod::Pod;
 use crate::prelude::*;
 use pipewire as pw;
 use pw::properties::properties;
 use pw::{context::Context, main_loop::MainLoop, spa};
-use std::mem;
-
-use iir_filters::filter::{DirectForm2Transposed, Filter};
-use iir_filters::filter_design::{butter, FilterType};
-use iir_filters::sos::zpk2sos;
-
-struct BandpassFilter {
-    filter: DirectForm2Transposed,
-}
-impl BandpassFilter {
-    /// Creates a new BandpassFilter with the given parameters.
-    ///
-    /// # Arguments
-    /// * `order` - The order of the filter.
-    /// * `cutoff_low` - The lower cutoff frequency in Hz.
-    /// * `cutoff_hi` - The upper cutoff frequency in Hz.
-    /// * `fs` - The sampling frequency in Hz.
-    pub fn new(
-        order: usize,
-        cutoff_low: f64,
-        cutoff_hi: f64,
-        fs: f64,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        let zpk = butter(
-            order as u32,
-            FilterType::BandPass(cutoff_low, cutoff_hi),
-            fs,
-        )?;
-        let sos = zpk2sos(&zpk, None)?;
-        let filter = DirectForm2Transposed::new(&sos);
-
-        Ok(Self { filter })
-    }
-
-    /// Applies the bandpass filter to an input signal.
-    ///
-    /// # Arguments
-    /// * `input` - A slice of input signal samples.
-    ///
-    /// # Returns
-    /// A `Vec<f64>` containing the filtered signal.
-    pub fn apply(&mut self, input: &[f64]) -> Vec<f64> {
-        input.iter().map(|&x| self.filter.filter(x)).collect()
-    }
-}
 
 struct UserData {
     format: spa::param::audio::AudioInfoRaw,
@@ -55,7 +11,7 @@ struct UserData {
     filter: Option<BandpassFilter>,
 }
 
-pub fn main() -> Result<(), pipewire::Error> {
+pub fn main(tone_freq: f32, bandwidth: f32) -> Result<(), pipewire::Error> {
     // Initialization code...
     pw::init();
     let mainloop = MainLoop::new(None)?;
@@ -81,7 +37,7 @@ pub fn main() -> Result<(), pipewire::Error> {
 
     let _listener = stream
         .add_local_listener_with_user_data(data)
-        .param_changed(|_, user_data, id, param| {
+        .param_changed(move |_, user_data, id, param| {
             // Handle format changes...
             // NULL means to clear the format
             let Some(param) = param else {
@@ -92,8 +48,13 @@ pub fn main() -> Result<(), pipewire::Error> {
             }
             user_data.format.parse(param).unwrap();
             user_data.filter = Some(
-                BandpassFilter::new(5, 500.0, 1000.0, user_data.format.rate() as f64)
-                    .expect("expected filter"),
+                BandpassFilter::new(
+                    5,
+                    tone_freq.into(),
+                    bandwidth.into(),
+                    user_data.format.rate() as f64,
+                )
+                .expect("expected filter"),
             );
         })
         .process(|stream, user_data| match stream.dequeue_buffer() {
@@ -106,7 +67,7 @@ pub fn main() -> Result<(), pipewire::Error> {
 
                 let data = &mut datas[0];
                 let n_channels = user_data.format.channels();
-                let n_samples = data.chunk().size() / (mem::size_of::<f32>() as u32);
+                //let n_samples = data.chunk().size() / (mem::size_of::<f32>() as u32);
 
                 if let Some(samples) = data.data() {
                     // Interpret the buffer as f32 samples

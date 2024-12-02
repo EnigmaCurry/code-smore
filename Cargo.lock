@@ -355,6 +355,7 @@ dependencies = [
  "hound",
  "iir_filters",
  "log",
+ "morse-codec",
  "pipewire",
  "rand",
  "regex",
@@ -1057,6 +1058,12 @@ dependencies = [
  "wasi",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "morse-codec"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7bd0546b2c0681bd5d220f051257f4c2b9ca097c1254bce363d424315c052fa"
 
 [[package]]
 name = "mp4parse"

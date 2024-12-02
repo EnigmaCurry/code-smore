@@ -2,6 +2,7 @@ use clap_complete::shells::Shell;
 
 mod cli;
 mod fecr_quiz;
+mod filter;
 mod listen;
 mod morse;
 mod pipewire;
@@ -171,7 +172,7 @@ fn main() {
                     listen::listen(file, tone_freq, bandwidth, threshold, dot_duration);
                 }
                 (Some(device), None) => {
-                    pipewire::main().expect("pipewire::main() failed");
+                    pipewire::main(tone_freq, bandwidth).expect("pipewire::main() failed");
                 }
                 (Some(device), Some(file)) => {
                     error!("Cannot specify --device and --file simultaneousy.");
