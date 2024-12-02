@@ -3,7 +3,6 @@ use clap_complete::shells::Shell;
 mod cli;
 mod fecr_quiz;
 mod filter;
-mod listen;
 mod morse;
 mod pipewire;
 mod prelude;
@@ -169,10 +168,11 @@ fn main() {
                 .unwrap_or(200.0);
             match (&device, &file) {
                 (None, Some(file)) => {
-                    listen::listen(file, tone_freq, bandwidth, threshold, dot_duration);
+                    println!("TODO");
+                    std::process::exit(1);
                 }
                 (Some(device), None) => {
-                    pipewire::main(tone_freq, bandwidth).expect("pipewire::main() failed");
+                    pipewire::listen(tone_freq, bandwidth).expect("pipewire::listen() failed");
                 }
                 (Some(device), Some(file)) => {
                     error!("Cannot specify --device and --file simultaneousy.");

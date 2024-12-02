@@ -11,7 +11,7 @@ struct UserData {
     filter: Option<BandpassFilter>,
 }
 
-pub fn main(tone_freq: f32, bandwidth: f32) -> Result<(), pipewire::Error> {
+pub fn listen(tone_freq: f32, bandwidth: f32) -> Result<(), pipewire::Error> {
     // Initialization code...
     pw::init();
     let mainloop = MainLoop::new(None)?;
