@@ -6,6 +6,8 @@
 
 This is a morse code practice tool.
 
+Read the blog article introduction by [WA7PGE](https://wa7pge.com/home/operating_modes/cw/instant_character_recognition).
+
 ## Install
 
 [Download the latest release for your platform.](https://github.com/EnigmaCurry/code-smore/releases/latest)
