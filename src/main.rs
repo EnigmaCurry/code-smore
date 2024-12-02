@@ -4,6 +4,7 @@ mod cli;
 mod fecr_quiz;
 mod listen;
 mod morse;
+mod pipewire;
 mod prelude;
 
 use prelude::*;
@@ -153,7 +154,7 @@ fn main() {
             let _morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
-            let _device = sub_matches
+            let device = sub_matches
                 .get_one::<String>("device")
                 .map(|s| s.to_string());
             let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
@@ -165,13 +166,22 @@ fn main() {
                 .get_one::<f32>("bandwidth")
                 .map(|s| *s as f32)
                 .unwrap_or(200.0);
-            listen::listen(
-                &file.expect("missing file"),
-                tone_freq,
-                bandwidth,
-                threshold,
-                dot_duration,
-            );
+            match (&device, &file) {
+                (None, Some(file)) => {
+                    listen::listen(file, tone_freq, bandwidth, threshold, dot_duration);
+                }
+                (Some(device), None) => {
+                    pipewire::main().expect("pipewire::main() failed");
+                }
+                (Some(device), Some(file)) => {
+                    error!("Cannot specify --device and --file simultaneousy.");
+                    std::process::exit(1);
+                }
+                _ => {
+                    error!("Must specify --device or --file.");
+                    std::process::exit(1);
+                }
+            }
             0
         }
         Some(("completions", sub_matches)) => {
