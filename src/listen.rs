@@ -99,6 +99,25 @@ fn fir_band_pass_filter(samples: &[f32], coefficients: &[f32]) -> Vec<f32> {
     filtered_samples
 }
 
+fn design_band_pass_filter(order: usize, low_cutoff: f32, high_cutoff: f32) -> Vec<f32> {
+    use std::f32::consts::PI;
+    let mut coefficients = vec![0.0; order];
+    let mid = order / 2;
+    for i in 0..order {
+        if i == mid {
+            coefficients[i] = 2.0 * (high_cutoff - low_cutoff);
+        } else {
+            let n = i as isize - mid as isize;
+            let low = low_cutoff * (2.0 * PI * n as f32).sin() / (PI * n as f32);
+            let high = high_cutoff * (2.0 * PI * n as f32).sin() / (PI * n as f32);
+            coefficients[i] = high - low;
+        }
+        coefficients[i] *= 0.54 - 0.46 * (2.0 * PI * i as f32 / order as f32).cos();
+        // Hamming window
+    }
+    coefficients
+}
+
 fn decode_morse_from_wav(
     file_path: &str,
     center_freq: f32,
@@ -111,6 +130,15 @@ fn decode_morse_from_wav(
     let spec = reader.spec();
     let sample_rate = spec.sample_rate;
     assert!(spec.channels == 1, "Only mono audio is supported");
+
+    // Calculate and print WAV file statistics
+    let num_samples: usize = reader.len() as usize;
+    let duration_seconds = num_samples as f32 / sample_rate as f32;
+
+    println!("WAV File Statistics:");
+    println!("  Sample Rate: {} Hz", sample_rate);
+    println!("  Number of Samples: {}", num_samples);
+    println!("  Duration: {:.2} seconds", duration_seconds);
 
     // Generate FIR filter coefficients for band-pass filtering
     let filter_order = 101;
@@ -129,99 +157,77 @@ fn decode_morse_from_wav(
     // Apply the band-pass filter
     let filtered_samples = fir_band_pass_filter(&samples, &fir_coefficients);
 
-    let mut timeline = Vec::new();
-    let mut current_duration = 0;
-    let mut is_tone = false;
-    let samples_per_dot = (sample_rate * dot_duration_ms / 1000) as usize;
+    // Convert samples to binary based on threshold
+    let chunk_size = 100; // Bin size
+    let mut binary_signal = Vec::new();
 
-    let window_span = 60; // Window span to select random samples from
-    let sample_count = 10; // Number of samples to test within the window
-
-    for start_index in (0..filtered_samples.len()).step_by(window_span) {
-        let end_index = (start_index + window_span).min(filtered_samples.len());
-        let mut rng = rand::thread_rng();
-
-        // Randomly select `sample_count` samples within the window
-        let random_samples: Vec<f32> = (0..sample_count)
-            .filter_map(|_| {
-                if end_index > start_index {
-                    Some(filtered_samples[rng.gen_range(start_index..end_index)])
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        let tone_count = random_samples
+    for chunk in filtered_samples.chunks(chunk_size) {
+        let above_threshold_count = chunk
             .iter()
-            .filter(|&&s| s.abs() > threshold)
+            .filter(|&&sample| sample.abs() > threshold)
             .count();
+        let proportion = above_threshold_count as f32 / chunk.len() as f32;
 
-        if tone_count as f32 >= 0.8 * sample_count as f32 {
-            // Confirm tone
-            if !is_tone {
-                // Transition from silence to tone
-                if current_duration > 0 {
-                    let period = if current_duration > 7 * samples_per_dot {
-                        "/"
-                    } else if current_duration > 3 * samples_per_dot {
-                        " "
-                    } else {
-                        ""
-                    };
-                    timeline.push(format!(
-                        "{}: Silence for {} samples",
-                        period, current_duration
-                    ));
-                }
-                current_duration = 0;
-                is_tone = true;
-            }
-            current_duration += 1;
-        } else if tone_count as f32 <= 0.2 * sample_count as f32 {
-            // Confirm silence
-            if is_tone {
-                // Transition from tone to silence
-                if current_duration > 0 {
-                    let period = if current_duration < samples_per_dot {
-                        "."
-                    } else {
-                        "-"
-                    };
-                    timeline.push(format!("{}: Tone for {} samples", period, current_duration));
-                }
-                current_duration = 0;
-                is_tone = false;
-            }
-            current_duration += 1;
+        // Determine binary value
+        if proportion > 0.1 {
+            binary_signal.push(1); // Tone present
         } else {
-            current_duration += 1; // Continue in the current state
+            binary_signal.push(0); // Tone absent
+        }
+    }
+    let mut changes_and_durations = Vec::new();
+
+    if binary_signal.is_empty() {
+        return String::new();
+    }
+
+    let mut current_value = binary_signal[0];
+    let mut duration = 1;
+
+    for &value in binary_signal.iter().skip(1) {
+        if value == current_value {
+            duration += 1;
+        } else {
+            // Record the current value and its duration
+            changes_and_durations.push((current_value, duration));
+
+            // Reset for the next value
+            current_value = value;
+            duration = 1;
         }
     }
 
-    for entry in timeline {
-        println!("{}", entry);
-    }
+    // Record the last value and its duration
+    changes_and_durations.push((current_value, duration));
 
-    // Return placeholder morse code (timeline replaces actual decoding for this implementation)
-    "".to_string()
-}
+    // Analyze durations to determine small and large categories
+    let mut durations: Vec<usize> = changes_and_durations.iter().map(|(_, dur)| *dur).collect();
+    durations.sort_unstable();
 
-fn design_band_pass_filter(order: usize, low_cutoff: f32, high_cutoff: f32) -> Vec<f32> {
-    use std::f32::consts::PI;
-    let mut coefficients = vec![0.0; order];
-    let mid = order / 2;
-    for i in 0..order {
-        if i == mid {
-            coefficients[i] = 2.0 * (high_cutoff - low_cutoff);
+    let threshold_duration = durations[durations.len() / 3]; // Simple threshold (median)
+
+    let mut morse_code = String::new();
+    for (value, duration) in changes_and_durations {
+        if value == 1 {
+            // Tone: dot or dash
+            if duration < threshold_duration {
+                morse_code.push('.');
+            } else {
+                morse_code.push('-');
+            }
         } else {
-            let n = i as isize - mid as isize;
-            let low = low_cutoff * (2.0 * PI * n as f32).sin() / (PI * n as f32);
-            let high = high_cutoff * (2.0 * PI * n as f32).sin() / (PI * n as f32);
-            coefficients[i] = high - low;
+            // Gap: character or word separator
+            if duration < threshold_duration {
+                morse_code.push(' '); // Short gap
+            } else {
+                morse_code.push('|'); // Long gap
+            }
         }
-        coefficients[i] *= 0.54 - 0.46 * (2.0 * PI * i as f32 / order as f32).cos();
-        // Hamming window
     }
-    coefficients
+
+    // Print Morse code (dots, dashes, and separators)
+    println!("Morse Code: {}", morse_code);
+
+    // Return the decoded Morse code
+    morse_code
 }
