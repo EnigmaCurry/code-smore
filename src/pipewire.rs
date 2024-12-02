@@ -1,27 +1,32 @@
 use crate::filter::*;
 use crate::pipewire::spa::pod::Pod;
 use crate::prelude::*;
+use morse_codec::decoder::Decoder;
 use pipewire as pw;
 use pw::properties::properties;
 use pw::{context::Context, main_loop::MainLoop, spa};
+use std::time::Instant;
 
 struct UserData {
     format: spa::param::audio::AudioInfoRaw,
-    cursor_move: bool,
     filter: Option<BandpassFilter>,
 }
 
-pub fn listen(tone_freq: f32, bandwidth: f32) -> Result<(), pipewire::Error> {
+pub fn listen(
+    tone_freq: f32,
+    bandwidth: f32,
+    threshold: f32,
+    dot_duration: u32,
+) -> Result<(), pipewire::Error> {
     // Initialization code...
     pw::init();
     let mainloop = MainLoop::new(None)?;
     let context = Context::new(&mainloop)?;
     let core = context.connect(None)?;
-    let registry = core.get_registry().expect("Invalid pipewire registry");
+    //let registry = core.get_registry().expect("Invalid pipewire registry");
 
     let data = UserData {
         format: Default::default(),
-        cursor_move: false,
         filter: None,
     };
 
@@ -35,11 +40,17 @@ pub fn listen(tone_freq: f32, bandwidth: f32) -> Result<(), pipewire::Error> {
     // Initialize the stream with the core and properties
     let stream = pw::stream::Stream::new(&core, "audio-capture", props)?;
 
+    // Morse decoder:
+    let mut decoder = Decoder::<64>::new()
+        .with_reference_short_ms(dot_duration as u16)
+        .build();
+    let mut last_signal_change = Instant::now();
+    let mut last_signal_state = false;
+
     let _listener = stream
         .add_local_listener_with_user_data(data)
         .param_changed(move |_, user_data, id, param| {
             // Handle format changes...
-            // NULL means to clear the format
             let Some(param) = param else {
                 return;
             };
@@ -57,7 +68,7 @@ pub fn listen(tone_freq: f32, bandwidth: f32) -> Result<(), pipewire::Error> {
                 .expect("expected filter"),
             );
         })
-        .process(|stream, user_data| match stream.dequeue_buffer() {
+        .process(move |stream, user_data| match stream.dequeue_buffer() {
             None => println!("Out of buffers"),
             Some(mut buffer) => {
                 let datas = buffer.datas_mut();
@@ -67,65 +78,52 @@ pub fn listen(tone_freq: f32, bandwidth: f32) -> Result<(), pipewire::Error> {
 
                 let data = &mut datas[0];
                 let n_channels = user_data.format.channels();
-                //let n_samples = data.chunk().size() / (mem::size_of::<f32>() as u32);
 
                 if let Some(samples) = data.data() {
                     // Interpret the buffer as f32 samples
                     let float_samples: &mut [f32] = bytemuck::cast_slice_mut(samples);
 
-                    if user_data.cursor_move {
-                        // Move the cursor up for clean output
-                        print!("\x1B[{}A", n_channels + 1);
-                    }
-                    println!();
-
                     for c in 0..n_channels {
                         let mut max: f32 = 0.0;
 
-                        // Extract the samples for the current channel
-                        let channel_samples: Vec<f32> = float_samples
+                        // Extract and filter the samples
+                        let channel_samples: Vec<f64> = float_samples
                             .iter()
                             .skip(c.try_into().expect("Invalid skip in float_samples"))
                             .step_by(n_channels as usize)
-                            .cloned()
+                            .map(|&s| s as f64)
                             .collect();
 
-                        // Convert Vec<f32> to Vec<f64>
-                        let channel_samples_f64: Vec<f64> =
-                            channel_samples.iter().map(|&s| s as f64).collect();
-
-                        // Apply the bandpass filter
                         let filtered_samples = if let Some(filter) = &mut user_data.filter {
-                            filter.apply(&channel_samples_f64)
+                            filter.apply(&channel_samples)
                         } else {
-                            channel_samples_f64
+                            channel_samples
                         };
 
-                        // Convert Vec<f64> back to Vec<f32>
-                        let filtered_samples_f32: Vec<f32> =
-                            filtered_samples.iter().map(|&s| s as f32).collect();
-
-                        // Write the filtered samples back to the buffer
-                        for (i, &sample) in filtered_samples_f32.iter().enumerate() {
-                            let idx = i * n_channels as usize + c as usize;
-                            float_samples[idx] = sample;
-                            max = max.max(sample.abs());
+                        // Determine if tone is detected
+                        for &sample in &filtered_samples {
+                            max = max.max(sample.abs() as f32);
                         }
 
-                        // Visualize the peak
                         let peak = ((max * 30.0) as usize).clamp(0, 39);
-                        println!(
-                            "channel {}: |{:>w1$}{:w2$}| peak: {:.3}",
-                            c,
-                            "*",
-                            "",
-                            max,
-                            w1 = peak + 1,
-                            w2 = 40 - peak
-                        );
-                    }
+                        let tone_detected = peak as f32 > threshold;
 
-                    user_data.cursor_move = true;
+                        // Handle signal state changes
+                        let now = Instant::now();
+                        let duration = now.duration_since(last_signal_change).as_millis() as u32;
+
+                        if tone_detected != last_signal_state {
+                            // Send the signal event to the decoder
+                            decoder.signal_event(duration as u16, last_signal_state);
+                            last_signal_change = now;
+                            last_signal_state = tone_detected;
+
+                            // Check if a new character is decoded
+                            if !decoder.message.is_empty() {
+                                println!("Decoded message: {}", decoder.message.as_str());
+                            }
+                        }
+                    }
                 }
             }
         })

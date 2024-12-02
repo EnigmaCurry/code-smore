@@ -168,21 +168,21 @@ fn main() {
                 .unwrap_or(200.0);
             match (&device, &file) {
                 (None, Some(file)) => {
-                    println!("TODO");
+                    error!("TODO. Audio file input is not supported yet.");
                     std::process::exit(1);
                 }
                 (Some(device), None) => {
-                    pipewire::listen(tone_freq, bandwidth).expect("pipewire::listen() failed");
+                    error!("TODO. Setting the input device name is not supported yet. Leave this setting unset to use the default device.");
+                    std::process::exit(1);
                 }
                 (Some(device), Some(file)) => {
                     error!("Cannot specify --device and --file simultaneousy.");
                     std::process::exit(1);
                 }
-                _ => {
-                    error!("Must specify --device or --file.");
-                    std::process::exit(1);
-                }
+                _ => {}
             }
+            pipewire::listen(tone_freq, bandwidth, threshold, dot_duration)
+                .expect("pipewire::listen() failed");
             0
         }
         Some(("completions", sub_matches)) => {
