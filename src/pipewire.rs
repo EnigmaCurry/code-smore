@@ -5,11 +5,13 @@ use morse_codec::decoder::Decoder;
 use pipewire as pw;
 use pw::properties::properties;
 use pw::{context::Context, main_loop::MainLoop, spa};
+use std::fmt::Write;
 use std::time::Instant;
 
 struct UserData {
     format: spa::param::audio::AudioInfoRaw,
     filter: Option<BandpassFilter>,
+    cursor_move: bool,
 }
 
 pub fn listen(
@@ -28,6 +30,7 @@ pub fn listen(
     let data = UserData {
         format: Default::default(),
         filter: None,
+        cursor_move: false,
     };
 
     let props = properties!(
@@ -41,11 +44,13 @@ pub fn listen(
     let stream = pw::stream::Stream::new(&core, "audio-capture", props)?;
 
     // Morse decoder:
-    let mut decoder = Decoder::<64>::new()
+    let mut decoder = Decoder::<9999>::new()
         .with_reference_short_ms(dot_duration as u16)
         .build();
     let mut last_signal_change = Instant::now();
     let mut last_signal_state = false;
+
+    clear_screen();
 
     let _listener = stream
         .add_local_listener_with_user_data(data)
@@ -78,8 +83,10 @@ pub fn listen(
 
                 let data = &mut datas[0];
                 let n_channels = user_data.format.channels();
-
                 if let Some(samples) = data.data() {
+                    if user_data.cursor_move {
+                        print!("\x1B[{}A", 1);
+                    }
                     // Interpret the buffer as f32 samples
                     let float_samples: &mut [f32] = bytemuck::cast_slice_mut(samples);
 
@@ -94,11 +101,13 @@ pub fn listen(
                             .map(|&s| s as f64)
                             .collect();
 
-                        let filtered_samples = if let Some(filter) = &mut user_data.filter {
-                            filter.apply(&channel_samples)
-                        } else {
-                            channel_samples
-                        };
+                        // let filtered_samples = if let Some(filter) = &mut user_data.filter {
+                        //     filter.apply(&channel_samples)
+                        // } else {
+                        //     channel_samples
+                        // };
+
+                        let filtered_samples = channel_samples;
 
                         // Determine if tone is detected
                         for &sample in &filtered_samples {
@@ -112,6 +121,9 @@ pub fn listen(
                         let now = Instant::now();
                         let duration = now.duration_since(last_signal_change).as_millis() as u32;
 
+                        let mut current_line = String::new();
+                        let mut current_line_length = 0;
+
                         if tone_detected != last_signal_state {
                             // Send the signal event to the decoder
                             decoder.signal_event(duration as u16, last_signal_state);
@@ -121,10 +133,12 @@ pub fn listen(
                             // Check if a new character is decoded
                             if !decoder.message.is_empty() {
                                 println!("Decoded message: {}", decoder.message.as_str());
+                                println!("");
                             }
                         }
                     }
                 }
+                user_data.cursor_move = true;
             }
         })
         .register()?;
@@ -160,7 +174,7 @@ pub fn listen(
             | pw::stream::StreamFlags::RT_PROCESS,
         &mut params,
     )?;
-    info!("well");
+
     // and wait while we let things run
     mainloop.run();
     Ok(())

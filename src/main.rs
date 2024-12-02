@@ -6,6 +6,7 @@ mod filter;
 mod morse;
 mod pipewire;
 mod prelude;
+mod term;
 
 use prelude::*;
 use std::io::BufRead;
