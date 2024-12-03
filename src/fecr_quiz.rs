@@ -25,7 +25,7 @@ pub fn start_quiz(
     baseline: u32,
 ) {
     let paragraph = match calibration {
-        true => format!("Calibration process.\n\nThis process will measure your native keyboard typing skills to calculate your personal output latency. A series of characters will be displayed at the same time a tone is played. Enter the characters as fast as you can.\n"),
+        true => "Calibration process.\n\nThis process will measure your native keyboard typing skills to calculate your personal output latency. A series of characters will be displayed at the same time a tone is played. Enter the characters as fast as you can.\n".to_string(),
         false => format!("Fast Enough Character Recognition quiz.\n\nMorse encoded characters will be played back to you one at a time and you must type the character you hear as soon as you recognize it.\n\nThis test will include {trials} trials. You will be timed in your response. Your reaction time is subtracted from the baseline input latency of {baseline}ms.\n")
     };
 
@@ -359,12 +359,12 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
         .map(
             |(character, (count, correct_time, incorrect_time, times_correct, times_incorrect))| {
                 let avg_correct_time = if count > 0 {
-                    correct_time / count as u32
+                    correct_time / count
                 } else {
                     Duration::default()
                 };
                 let avg_incorrect_time = if count > 0 {
-                    incorrect_time / count as u32
+                    incorrect_time / count
                 } else {
                     Duration::default()
                 };

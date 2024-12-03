@@ -117,7 +117,7 @@ pub fn code_to_text(code: &str) -> String {
     let morse_map = get_morse_maps().1;
     regex::Regex::new(r"\s{3,}") // Match three or more spaces
         .unwrap()
-        .replace_all(&code, " / ")
+        .replace_all(code, " / ")
         .to_string()
         .split(" / ") // Split by word gaps
         .map(|word| {

@@ -134,16 +134,14 @@ fn main() {
                                     player.play_gap(dot_duration * 14);
                                 }
                             }
+                        } else if *morse {
+                            // stdin is already morse encoded:
+                            player.play_morse(&line, dot_duration, tone_freq);
+                            player.play_gap(dot_duration * 14);
                         } else {
-                            if *morse {
-                                // stdin is already morse encoded:
-                                player.play_morse(&line, dot_duration, tone_freq);
-                                player.play_gap(dot_duration * 14);
-                            } else {
-                                // Convert stdin into morse and play it:
-                                player.play(&line, dot_duration, tone_freq);
-                                player.play_gap(dot_duration * 14);
-                            }
+                            // Convert stdin into morse and play it:
+                            player.play(&line, dot_duration, tone_freq);
+                            player.play_gap(dot_duration * 14);
                         }
                     }
                     Err(e) => eprintln!("Error reading line: {}", e),
@@ -162,18 +160,18 @@ fn main() {
             let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
             let threshold = sub_matches
                 .get_one::<f32>("threshold")
-                .map(|s| *s as f32)
+                .copied()
                 .unwrap_or(0.3);
             let bandwidth = sub_matches
                 .get_one::<f32>("bandwidth")
-                .map(|s| *s as f32)
+                .copied()
                 .unwrap_or(200.0);
             match (&device, &file) {
-                (None, Some(file)) => {
+                (None, Some(_file)) => {
                     error!("TODO. Audio file input is not supported yet.");
                     std::process::exit(1);
                 }
-                (Some(device), None) => {
+                (Some(_device), None) => {
                     error!("TODO. Setting the input device name is not supported yet. Leave this setting unset to use the default device.");
                     std::process::exit(1);
                 }
@@ -207,17 +205,17 @@ fn main() {
                     "### Instructions to enable tab completion for {}",
                     env!("CARGO_BIN_NAME")
                 );
-                eprintln!("");
+                eprintln!();
                 eprintln!("### Bash (put this in ~/.bashrc:)");
                 eprintln!("  source <({} completions bash)", env!("CARGO_BIN_NAME"));
-                eprintln!("");
+                eprintln!();
                 eprintln!("### To make an alias (eg. 'h'), add this too:");
                 eprintln!("  alias h={}", env!("CARGO_BIN_NAME"));
                 eprintln!(
                     "  complete -F _{} -o bashdefault -o default h",
                     env!("CARGO_BIN_NAME")
                 );
-                eprintln!("");
+                eprintln!();
                 eprintln!("### If you don't use Bash, you can also use Fish or Zsh:");
                 eprintln!("### Fish (put this in ~/.config/fish/config.fish");
                 eprintln!("  {} completions fish | source)", env!("CARGO_BIN_NAME"));
@@ -232,7 +230,7 @@ fn main() {
         _ => 1,
     };
 
-    eprintln!("");
+    eprintln!();
     std::process::exit(exit_code);
 }
 
