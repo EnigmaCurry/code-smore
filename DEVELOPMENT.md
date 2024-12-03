@@ -6,8 +6,8 @@ platform may be required.
 ## Install host dependencies
 
 ```
-sudo dnf install git openssh rustup alsa-lib-devel
-sudo dnf install @development-tools @development-libs
+sudo dnf install @development-tools @development-libs git openssh rustup \
+                 alsa-lib-devel pipewire-devel pipewire-utils clang-devel
 ```
 
 ## Install rust and cargo

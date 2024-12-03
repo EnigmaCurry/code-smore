@@ -136,6 +136,72 @@ pub fn app() -> Command {
                 ),
         )
         .subcommand(
+            Command::new("listen")
+                .about(
+                    "listen to morse code from a file or audio device and output it",
+                )
+                .arg(
+                    Arg::new("morse")
+                        .long("morse")
+                        .action(clap::ArgAction::SetTrue)
+                        .help(
+                            "Output text in morse code",
+                        ),
+                )
+                .arg(
+                    Arg::new("threshold")
+                        .short('t')
+                        .long("threshold")
+                        .value_parser(|v: &str| {
+                            v.parse::<f32>()
+                                .map_err(|_| String::from("Threshold must be a valid floating-point number"))
+                                .and_then(|val| {
+                                    if (0.0..=1.0).contains(&val) {
+                                        Ok(val)
+                                    } else {
+                                        Err(String::from("Threshold must be between 0.0 and 1.0"))
+                                    }
+                                })
+                        })
+                        .help(
+                            "Minimal signal value threshold [0.0..1.0]",
+                        ),
+                )
+                .arg(
+                    Arg::new("bandwidth")
+                        .short('W')
+                        .long("bandwidth")
+                        .value_parser(|v: &str| {
+                            v.parse::<f32>()
+                                .map_err(|_| String::from("Bandwidth must be a valid floating-point number"))
+                                .and_then(|val| {
+                                    if (0.0..=1000.0).contains(&val) {
+                                        Ok(val)
+                                    } else {
+                                        Err(String::from("Threshold must be between 0.0Hz and 1000.0Hz"))
+                                    }
+                                })
+                        })
+                        .help(
+                            "Minimal signal value threshold [0.0..1.0]",
+                        ),
+                )
+                .arg(
+                    Arg::new("file")
+                        .short('f')
+                        .long("file")
+                        .help("Read morse code from an audio file")
+                        .conflicts_with("device"), // Ensures `--file` and `--device` are mutually exclusive
+                )
+                .arg(
+                    Arg::new("device")
+                        .short('d')
+                        .long("device")
+                        .help("Read morse code from an audio device")
+                        .conflicts_with("file"), // Ensures `--device` and `--file` are mutually exclusive
+                ),
+        )
+        .subcommand(
             Command::new("completions")
                 .about(
                     "Generates shell completions

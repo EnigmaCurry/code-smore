@@ -2,13 +2,19 @@ use clap_complete::shells::Shell;
 
 mod cli;
 mod fecr_quiz;
+mod filter;
+mod message;
 mod morse;
+mod pipewire;
 mod prelude;
+mod term;
+
+use std::process::Command;
 
 use prelude::*;
 use std::io::BufRead;
 
-use crate::morse::text_to_morse;
+use crate::{morse::text_to_morse, pipewire::ensure_pipewire};
 
 fn main() {
     let mut cmd = cli::app();
@@ -144,6 +150,48 @@ fn main() {
                     }
                     Err(e) => eprintln!("Error reading line: {}", e),
                 }
+            }
+            0
+        }
+        Some(("listen", sub_matches)) => {
+            //
+            let _morse = sub_matches
+                .get_one::<bool>("morse")
+                .expect("Missing --morse arg default");
+            let device = sub_matches
+                .get_one::<String>("device")
+                .map(|s| s.to_string());
+            let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
+            let threshold = sub_matches
+                .get_one::<f32>("threshold")
+                .map(|s| *s as f32)
+                .unwrap_or(0.3);
+            let bandwidth = sub_matches
+                .get_one::<f32>("bandwidth")
+                .map(|s| *s as f32)
+                .unwrap_or(200.0);
+            match (&device, &file) {
+                (None, Some(file)) => {
+                    error!("TODO. Audio file input is not supported yet.");
+                    std::process::exit(1);
+                }
+                (Some(device), None) => {
+                    error!("TODO. Setting the input device name is not supported yet. Leave this setting unset to use the default device.");
+                    std::process::exit(1);
+                }
+                (Some(device), Some(file)) => {
+                    error!("Cannot specify --device and --file simultaneousy.");
+                    std::process::exit(1);
+                }
+                _ => {}
+            }
+            if cfg!(target_os = "linux") {
+                ensure_pipewire();
+                pipewire::listen(tone_freq, bandwidth, threshold, dot_duration)
+                    .expect("pipewire::listen() failed");
+            } else {
+                error!("Sorry, the listen feature is only supported on Linux right now.");
+                std::process::exit(1);
             }
             0
         }
