@@ -175,7 +175,7 @@ fn main() {
                     error!("TODO. Setting the input device name is not supported yet. Leave this setting unset to use the default device.");
                     std::process::exit(1);
                 }
-                (Some(device), Some(file)) => {
+                (Some(_device), Some(_file)) => {
                     error!("Cannot specify --device and --file simultaneousy.");
                     std::process::exit(1);
                 }

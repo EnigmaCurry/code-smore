@@ -3,6 +3,7 @@ use iir_filters::filter_design::{butter, FilterType};
 use iir_filters::sos::zpk2sos;
 
 pub struct BandpassFilter {
+    #[allow(dead_code)]
     filter: DirectForm2Transposed,
 }
 impl BandpassFilter {
@@ -39,6 +40,7 @@ impl BandpassFilter {
     ///
     /// # Returns
     /// A `Vec<f64>` containing the filtered signal.
+    #[allow(dead_code)]
     pub fn apply(&mut self, input: &[f64]) -> Vec<f64> {
         input.iter().map(|&x| self.filter.filter(x)).collect()
     }

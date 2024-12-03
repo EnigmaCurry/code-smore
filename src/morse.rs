@@ -118,7 +118,6 @@ pub fn code_to_text(code: &str) -> String {
     regex::Regex::new(r"\s{3,}") // Match three or more spaces
         .unwrap()
         .replace_all(code, " / ")
-        .to_string()
         .split(" / ") // Split by word gaps
         .map(|word| {
             word.split_whitespace() // Split by character gaps
@@ -211,14 +210,14 @@ impl MorsePlayer {
         let stream_handle = Arc::new(stream.1);
 
         Self {
+            #[allow(clippy::arc_with_non_send_sync)]
             stream: Arc::new(stream.0),
             stream_handle,
         }
     }
 
     pub fn play_gap(&self, dot_duration: u32) {
-        let mut tones = Vec::new();
-        tones.push((0.0, dot_duration));
+        let tones = vec![(0.0, dot_duration)];
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         play_morse_code(tones, &sink);
         sink.sleep_until_end();
@@ -227,8 +226,7 @@ impl MorsePlayer {
     pub fn play_nonblocking_tone(&self, dot_duration: u32, tone_freq: f32) {
         let stream_handle = self.stream_handle.clone();
         thread::spawn(move || {
-            let mut tones = Vec::new();
-            tones.push((tone_freq, dot_duration));
+            let tones = vec![(tone_freq, dot_duration)];
             let sink = Sink::try_new(&stream_handle).unwrap();
             play_morse_code(tones, &sink);
             sink.sleep_until_end(); // Blocks within this thread, not the main one

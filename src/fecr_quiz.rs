@@ -14,6 +14,7 @@ use tabled::settings::style::Style;
 use tabled::{Table, Tabled};
 use textwrap::wrap;
 
+#[allow(clippy::too_many_arguments)]
 pub fn start_quiz(
     trials: u32,
     char_set: &str,
@@ -115,6 +116,7 @@ struct QuizResult {
     reaction_times: Vec<Option<Duration>>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn reaction_time_quiz(
     player: &MorsePlayer,
     char_set: &str,
@@ -338,19 +340,16 @@ fn print_results(results: &QuizResult, dot_duration: Duration, calibration: bool
         ));
         entry.0 += 1; // Increment trial count
 
-        match results.responses[i] {
-            Some(res) => {
-                if res {
-                    entry.1 += results.reaction_times[i].expect("Reaction time not found");
-                    entry.3 += 1
-                // Add to correct times
-                } else {
-                    entry.2 += results.reaction_times[i].expect("Reaction time not found");
-                    entry.4 += 1
-                    // Add to incorrect times
-                }
+        if let Some(res) = results.responses[i] {
+            if res {
+                entry.1 += results.reaction_times[i].expect("Reaction time not found");
+                entry.3 += 1
+            // Add to correct times
+            } else {
+                entry.2 += results.reaction_times[i].expect("Reaction time not found");
+                entry.4 += 1
+                // Add to incorrect times
             }
-            None => {}
         }
     }
 
