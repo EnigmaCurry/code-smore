@@ -185,10 +185,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-registry-
 
-    - name: Install libasound2-dev
+    - name: Install deps
       run: |
         sudo apt-get update
-        sudo apt-get install -y libasound2-dev
+        sudo apt-get install -y libasound2-dev  libpipewire-0.3-dev pipewire-bin libclang-dev build-essential pkg-config
           
     # Verify if the crate is ready to be published:
     - name: Check crate is ready for publishing
