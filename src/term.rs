@@ -5,7 +5,7 @@ use crossterm::{
     execute,
     terminal::{Clear, ClearType},
 };
-use std::io::{stdout, Write};
+use std::io::stdout;
 
 pub fn clear_screen() {
     let mut stdout = stdout();

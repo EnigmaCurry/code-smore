@@ -9,8 +9,6 @@ mod pipewire;
 mod prelude;
 mod term;
 
-use std::process::Command;
-
 use prelude::*;
 use std::io::BufRead;
 
