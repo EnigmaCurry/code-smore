@@ -116,7 +116,7 @@ pub fn listen(
                 let n_channels = user_data.format.channels();
                 if let Some(samples) = data.data() {
                     if user_data.cursor_move {
-                        print!("\x1B[{}A", 1);
+                        //print!("\x1B[{}A", 1);
                     }
                     // Interpret the buffer as f32 samples
                     let float_samples: &mut [f32] = bytemuck::cast_slice_mut(samples);
@@ -146,7 +146,7 @@ pub fn listen(
 
                         let peak = ((max * 30.0) as usize).clamp(0, 39);
                         let tone_detected = peak as f32 > threshold;
-                        let timeout_duration = 10 * dot_duration; // Define the timeout duration
+                        let timeout_duration = 20 * dot_duration; // Define the timeout duration
                         let now = Instant::now();
                         let duration = now.duration_since(last_signal_change).as_millis() as u32;
 
@@ -165,14 +165,13 @@ pub fn listen(
 
                             // Check if a new character is decoded
                             if !decoder.message.is_empty() {
-                                println!("{}", decoder.message.as_str());
-                                println!("");
+                                // println!("{}", decoder.message.as_str());
+                                // println!("");
                             }
                         }
 
                         // Check for timeout if no signal state changes
                         if duration > timeout_duration {
-                            decoder.signal_event_end(true);
                             last_signal_change = now;
                             last_signal_state = false;
                             let msg = decoder.message.as_str().to_string();
@@ -182,13 +181,23 @@ pub fn listen(
                                 .set_message(&msg, true)
                                 .expect("expected to set message");
                             if !decoder.message.is_empty() {
-                                println!("{}", decoder.message.as_str());
-                                println!("");
+                                decoder.signal_event_end(false);
+                                decoder.signal_event_end(true);
+                                let msg = decoder.message.as_str().to_string();
+                                let msg = whitespace_regex.replace_all(&msg, " ");
+                                decoder
+                                    .message
+                                    .set_message(&msg, true)
+                                    .expect("expected to set message");
+                                // println!("{}", msg);
+                                // println!("");
+                                info!("Decoded message: {}", msg);
+                                decoder.message.clear();
                             }
                         }
                     }
+                    user_data.cursor_move = true;
                 }
-                user_data.cursor_move = true;
             }
         })
         .register()?;
