@@ -3,10 +3,12 @@ use clap_complete::shells::Shell;
 mod cli;
 mod fecr_quiz;
 mod filter;
+mod message;
 mod morse;
 mod pipewire;
 mod prelude;
 mod term;
+
 use std::process::Command;
 
 use prelude::*;

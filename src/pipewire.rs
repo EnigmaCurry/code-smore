@@ -1,22 +1,22 @@
 use crate::filter::*;
+use crate::message::Message;
 use crate::pipewire::spa::pod::Pod;
 use crate::prelude::*;
+use crate::term::log_message;
+use chrono::Local;
 use morse_codec::decoder::Decoder;
 use pipewire as pw;
 use pw::properties::properties;
 use pw::{context::Context, main_loop::MainLoop, spa};
 use regex::Regex;
-use std::io::Write;
+use std::process::Command;
 use std::time::Instant;
 
 struct UserData {
     format: spa::param::audio::AudioInfoRaw,
     filter: Option<BandpassFilter>,
-    cursor_move: bool,
-    message_log: Vec<String>, // Log of decoded messages
+    message_log: Vec<Message>, // Log of decoded messages as Message structs
 }
-
-use std::process::Command;
 
 pub fn ensure_pipewire() {
     let service_status = Command::new("systemctl")
@@ -60,7 +60,6 @@ pub fn listen(
     let data = UserData {
         format: Default::default(),
         filter: None,
-        cursor_move: false,
         message_log: Vec::new(),
     };
 
@@ -71,10 +70,8 @@ pub fn listen(
         *pw::keys::STREAM_CAPTURE_SINK => "true"
     );
 
-    // Initialize the stream with the core and properties
     let stream = pw::stream::Stream::new(&core, "audio-capture", props)?;
 
-    // Morse decoder:
     let mut decoder = Decoder::<9999>::new()
         .with_reference_short_ms(dot_duration as u16)
         .build();
@@ -87,7 +84,6 @@ pub fn listen(
     let _listener = stream
         .add_local_listener_with_user_data(data)
         .param_changed(move |_, user_data, id, param| {
-            // Handle format changes...
             let Some(param) = param else {
                 return;
             };
@@ -148,13 +144,12 @@ pub fn listen(
                             if !msg.is_empty() {
                                 clear_screen();
 
-                                // Print all previous messages
+                                // Print all previous messages with timestamp
                                 for logged_msg in &user_data.message_log {
-                                    println!("{}", logged_msg);
+                                    log_message(logged_msg);
                                 }
 
-                                // Print the new message and add it to the log
-                                println!("{}", msg);
+                                println!("{msg}");
                             }
 
                             last_signal_change = now;
@@ -175,14 +170,26 @@ pub fn listen(
 
                                 clear_screen();
 
-                                // Print all previous messages
+                                // Print all previous messages with timestamp
                                 for logged_msg in &user_data.message_log {
-                                    println!("{}", logged_msg);
+                                    log_message(logged_msg);
                                 }
 
+                                // Get the current timestamp
+                                let timestamp =
+                                    Local::now().format("%y-%m-%d %H:%M:%S %p").to_string();
+
                                 // Print the new message and add it to the log
-                                println!("{}", msg);
-                                user_data.message_log.push(msg.clone());
+
+                                let m = Message {
+                                    timestamp: timestamp.clone(),
+                                    content: msg.clone(),
+                                };
+                                log_message(&m);
+                                user_data.message_log.push(Message {
+                                    timestamp,
+                                    content: msg.clone(),
+                                });
 
                                 decoder.message.clear();
                             }
