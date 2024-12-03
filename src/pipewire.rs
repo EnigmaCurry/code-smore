@@ -8,12 +8,12 @@ use pw::{context::Context, main_loop::MainLoop, spa};
 use regex::Regex;
 use std::io::Write;
 use std::time::Instant;
-use term_size;
 
 struct UserData {
     format: spa::param::audio::AudioInfoRaw,
     filter: Option<BandpassFilter>,
     cursor_move: bool,
+    message_log: Vec<String>, // Log of decoded messages
 }
 
 use std::process::Command;
@@ -52,17 +52,16 @@ pub fn listen(
     threshold: f32,
     dot_duration: u32,
 ) -> Result<(), pipewire::Error> {
-    // Initialization code...
     pw::init();
     let mainloop = MainLoop::new(None)?;
     let context = Context::new(&mainloop)?;
     let core = context.connect(None)?;
-    //let registry = core.get_registry().expect("Invalid pipewire registry");
 
     let data = UserData {
         format: Default::default(),
         filter: None,
         cursor_move: false,
+        message_log: Vec::new(),
     };
 
     let props = properties!(
@@ -141,21 +140,21 @@ pub fn listen(
                         let now = Instant::now();
                         let duration = now.duration_since(last_signal_change).as_millis() as u32;
 
-                        // Track the last printed message and its wrapped line count
-                        let mut printed_message = String::new();
-
                         if tone_detected != last_signal_state {
                             decoder.signal_event(duration as u16, last_signal_state);
                             let mut msg = decoder.message.as_str().to_string();
                             msg = whitespace_regex.replace_all(&msg, " ").to_string();
 
-                            // Print only the new character
-                            if msg.len() > printed_message.len() {
-                                let new_char =
-                                    &msg[printed_message.len()..printed_message.len() + 1];
-                                print!("{}", new_char);
-                                std::io::stdout().flush().expect("Failed to flush stdout");
-                                printed_message = msg.clone(); // Update the printed message
+                            if !msg.is_empty() {
+                                clear_screen();
+
+                                // Print all previous messages
+                                for logged_msg in &user_data.message_log {
+                                    println!("{}", logged_msg);
+                                }
+
+                                // Print the new message and add it to the log
+                                println!("{}", msg);
                             }
 
                             last_signal_change = now;
@@ -174,32 +173,17 @@ pub fn listen(
                                 msg = decoder.message.as_str().to_string();
                                 msg = whitespace_regex.replace_all(&msg, " ").to_string();
 
-                                // Redraw only if the new message differs from the printed message
-                                if msg != printed_message {
-                                    // Calculate terminal width
-                                    let terminal_width =
-                                        term_size::dimensions().map(|(w, _)| w).unwrap_or(80);
-                                    // Count how many lines the printed message occupies
-                                    let lines_to_clear = printed_message
-                                        .lines()
-                                        .map(|line| {
-                                            (line.len() as f64 / terminal_width as f64).ceil()
-                                                as usize
-                                        })
-                                        .sum::<usize>();
+                                clear_screen();
 
-                                    // Clear the previous printed message
-                                    for _ in 0..lines_to_clear {
-                                        print!("\r\x1B[K\x1B[1A"); // Clear line and move up
-                                    }
-                                    print!("\r\x1B[K"); // Clear the last line
-                                    std::io::stdout().flush().expect("Failed to flush stdout");
-
-                                    printed_message = msg.clone(); // Update the printed message
+                                // Print all previous messages
+                                for logged_msg in &user_data.message_log {
+                                    println!("{}", logged_msg);
                                 }
 
-                                // Reset the decoder for the next message
-                                info!("{}", &msg);
+                                // Print the new message and add it to the log
+                                println!("{}", msg);
+                                user_data.message_log.push(msg.clone());
+
                                 decoder.message.clear();
                             }
                         }
@@ -209,10 +193,6 @@ pub fn listen(
         })
         .register()?;
 
-    /* Make one parameter with the supported formats. The SPA_PARAM_EnumFormat
-     * id means that this is a format enumeration (of 1 value).
-     * We leave the channels and rate empty to accept the native graph
-     * rate and channels. */
     let mut audio_info = spa::param::audio::AudioInfoRaw::new();
     audio_info.set_format(spa::param::audio::AudioFormat::F32LE);
     let obj = pw::spa::pod::Object {
@@ -230,8 +210,6 @@ pub fn listen(
 
     let mut params = [Pod::from_bytes(&values).unwrap()];
 
-    /* Now connect this stream. We ask that our process function is
-     * called in a realtime thread. */
     stream.connect(
         spa::utils::Direction::Input,
         None,
@@ -241,7 +219,6 @@ pub fn listen(
         &mut params,
     )?;
 
-    // and wait while we let things run
     mainloop.run();
     Ok(())
 }
