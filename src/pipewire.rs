@@ -5,7 +5,7 @@ use morse_codec::decoder::Decoder;
 use pipewire as pw;
 use pw::properties::properties;
 use pw::{context::Context, main_loop::MainLoop, spa};
-use std::fmt::Write;
+use regex::Regex;
 use std::time::Instant;
 
 struct UserData {
@@ -14,6 +14,35 @@ struct UserData {
     cursor_move: bool,
 }
 
+use std::process::Command;
+
+pub fn ensure_pipewire() {
+    let service_status = Command::new("systemctl")
+        .args(["--user", "is-active", "pipewire"])
+        .output();
+
+    match service_status {
+        Ok(output) if output.status.success() => {
+            //println!("PipeWire service is active");
+        }
+        _ => {
+            eprintln!("The pipewire service is not active. Checking installation ...");
+            let program_check = Command::new("pipewire").arg("--version").output();
+            match program_check {
+                Ok(output) if output.status.success() => {
+                    eprintln!(
+                        "pipewire is installed, but the service is not active. Please start it using: 'systemctl --user start pipewire'"
+                    );
+                }
+                _ => {
+                    eprintln!("pipewire is not installed. Please install it to proceed.");
+                }
+            }
+
+            std::process::exit(1);
+        }
+    }
+}
 pub fn listen(
     tone_freq: f32,
     bandwidth: f32,
@@ -49,6 +78,7 @@ pub fn listen(
         .build();
     let mut last_signal_change = Instant::now();
     let mut last_signal_state = false;
+    let whitespace_regex = Regex::new(r"\s+").unwrap();
 
     clear_screen();
 
@@ -101,13 +131,11 @@ pub fn listen(
                             .map(|&s| s as f64)
                             .collect();
 
-                        // let filtered_samples = if let Some(filter) = &mut user_data.filter {
-                        //     filter.apply(&channel_samples)
-                        // } else {
-                        //     channel_samples
-                        // };
-
-                        let filtered_samples = channel_samples;
+                        let filtered_samples = if let Some(filter) = &mut user_data.filter {
+                            filter.apply(&channel_samples)
+                        } else {
+                            channel_samples
+                        };
 
                         // Determine if tone is detected
                         for &sample in &filtered_samples {
@@ -116,23 +144,43 @@ pub fn listen(
 
                         let peak = ((max * 30.0) as usize).clamp(0, 39);
                         let tone_detected = peak as f32 > threshold;
-
-                        // Handle signal state changes
+                        let timeout_duration = 10 * dot_duration; // Define the timeout duration
                         let now = Instant::now();
                         let duration = now.duration_since(last_signal_change).as_millis() as u32;
 
-                        let mut current_line = String::new();
-                        let mut current_line_length = 0;
-
+                        // Handle signal state changes
                         if tone_detected != last_signal_state {
                             // Send the signal event to the decoder
                             decoder.signal_event(duration as u16, last_signal_state);
+                            let msg = decoder.message.as_str().to_string();
+                            let msg = whitespace_regex.replace_all(&msg, " ");
+                            decoder
+                                .message
+                                .set_message(&msg, true)
+                                .expect("expected to set message");
                             last_signal_change = now;
                             last_signal_state = tone_detected;
 
                             // Check if a new character is decoded
                             if !decoder.message.is_empty() {
-                                println!("Decoded message: {}", decoder.message.as_str());
+                                println!("{}", decoder.message.as_str());
+                                println!("");
+                            }
+                        }
+
+                        // Check for timeout if no signal state changes
+                        if duration > timeout_duration {
+                            decoder.signal_event_end(true);
+                            last_signal_change = now;
+                            last_signal_state = false;
+                            let msg = decoder.message.as_str().to_string();
+                            let msg = whitespace_regex.replace_all(&msg, " ");
+                            decoder
+                                .message
+                                .set_message(&msg, true)
+                                .expect("expected to set message");
+                            if !decoder.message.is_empty() {
+                                println!("{}", decoder.message.as_str());
                                 println!("");
                             }
                         }

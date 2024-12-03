@@ -7,11 +7,12 @@ mod morse;
 mod pipewire;
 mod prelude;
 mod term;
+use std::process::Command;
 
 use prelude::*;
 use std::io::BufRead;
 
-use crate::morse::text_to_morse;
+use crate::{morse::text_to_morse, pipewire::ensure_pipewire};
 
 fn main() {
     let mut cmd = cli::app();
@@ -182,8 +183,14 @@ fn main() {
                 }
                 _ => {}
             }
-            pipewire::listen(tone_freq, bandwidth, threshold, dot_duration)
-                .expect("pipewire::listen() failed");
+            if cfg!(target_os = "linux") {
+                ensure_pipewire();
+                pipewire::listen(tone_freq, bandwidth, threshold, dot_duration)
+                    .expect("pipewire::listen() failed");
+            } else {
+                error!("Sorry, the listen feature is only supported on Linux right now.");
+                std::process::exit(1);
+            }
             0
         }
         Some(("completions", sub_matches)) => {
