@@ -30,6 +30,7 @@ Commands:
   fecr-quiz   Start the Fast Enough Character Recognition quiz
   test-sound  Test that sound is working
   read        Read text from stdin and output it as morse code
+  listen      listen to morse code from a file or audio device and output it
   help        Print this message or the help of the given subcommand(s)
 
 Options:
@@ -137,6 +138,22 @@ Encode text and playback as separate steps in a pipeline, playback at 10WPM:
 ## --morse expects text to already be morse encoded:
 $ echo "Hello World" | code-smore read --text | code-smore read --morse --wpm 10
 ```
+
+## Listen and decode audio
+
+> **Note:** This feature is supported on Linux pipewire enabled systems only.
+
+code-smore can listen to the other programs running on your computer
+and can decode morse code audio. 
+
+```
+code-smore listen --wpm 20
+```
+
+code-smore will listen to the monitor of your default sound device in
+pipewire. Use the `--wpm` argument to specify the expected rate of
+transmission. There is some leeway here so it does not need to be
+exact.
 
 ## Tab completion
 
