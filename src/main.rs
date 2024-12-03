@@ -151,7 +151,7 @@ fn main() {
         }
         Some(("listen", sub_matches)) => {
             //
-            let _morse = sub_matches
+            let morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
             let device = sub_matches
@@ -183,7 +183,7 @@ fn main() {
             }
             if cfg!(target_os = "linux") {
                 ensure_pipewire();
-                pipewire::listen(tone_freq, bandwidth, threshold, dot_duration)
+                pipewire::listen(tone_freq, bandwidth, threshold, dot_duration, *morse)
                     .expect("pipewire::listen() failed");
             } else {
                 error!("Sorry, the listen feature is only supported on Linux right now.");

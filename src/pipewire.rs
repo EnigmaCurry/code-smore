@@ -1,5 +1,6 @@
 use crate::filter::*;
 use crate::message::Message;
+use crate::morse::text_to_morse;
 use crate::pipewire::spa::pod::Pod;
 use crate::prelude::*;
 use crate::term::log_message;
@@ -51,6 +52,7 @@ pub fn listen(
     bandwidth: f32,
     threshold: f32,
     dot_duration: u32,
+    output_morse: bool,
 ) -> Result<(), pipewire::Error> {
     pw::init();
     let mainloop = MainLoop::new(None)?;
@@ -149,7 +151,11 @@ pub fn listen(
                                     log_message(logged_msg);
                                 }
                                 // Print the current message as it is received:
-                                println!("{msg}");
+                                if output_morse {
+                                    println!("{}", text_to_morse(&msg));
+                                } else {
+                                    println!("{msg}");
+                                }
                             }
 
                             last_signal_change = now;
@@ -178,16 +184,17 @@ pub fn listen(
                                 let timestamp =
                                     Local::now().format("%y-%m-%d %H:%M:%S %p").to_string();
                                 // Print the new message and add it to the log
-                                let m = Message {
+                                let mut m = Message {
                                     timestamp: timestamp.clone(),
                                     content: msg.clone(),
                                 };
+                                if output_morse {
+                                    m.content = text_to_morse(&m.content);
+                                }
                                 log_message(&m);
+
                                 // Push the complete message into the log
-                                user_data.message_log.push(Message {
-                                    timestamp,
-                                    content: msg.clone(),
-                                });
+                                user_data.message_log.push(m);
                                 // Clear the decoder to prepare for a new message:
                                 decoder.message.clear();
                             }
