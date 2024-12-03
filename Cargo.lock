@@ -362,6 +362,7 @@ dependencies = [
  "rodio",
  "shell-words",
  "tabled",
+ "term_size",
  "textwrap",
 ]
 
@@ -1713,6 +1714,16 @@ name = "target-lexicon"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
+
+[[package]]
+name = "term_size"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e4129646ca0ed8f45d09b929036bafad5377103edd06e50bf574b353d2b08d9"
+dependencies = [
+ "libc",
+ "winapi",
+]
 
 [[package]]
 name = "textwrap"

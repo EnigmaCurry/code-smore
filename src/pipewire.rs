@@ -6,7 +6,9 @@ use pipewire as pw;
 use pw::properties::properties;
 use pw::{context::Context, main_loop::MainLoop, spa};
 use regex::Regex;
+use std::io::Write;
 use std::time::Instant;
+use term_size;
 
 struct UserData {
     format: spa::param::audio::AudioInfoRaw,
@@ -115,16 +117,11 @@ pub fn listen(
                 let data = &mut datas[0];
                 let n_channels = user_data.format.channels();
                 if let Some(samples) = data.data() {
-                    if user_data.cursor_move {
-                        //print!("\x1B[{}A", 1);
-                    }
-                    // Interpret the buffer as f32 samples
                     let float_samples: &mut [f32] = bytemuck::cast_slice_mut(samples);
 
                     for c in 0..n_channels {
                         let mut max: f32 = 0.0;
 
-                        // Extract and filter the samples
                         let channel_samples: Vec<f64> = float_samples
                             .iter()
                             .skip(c.try_into().expect("Invalid skip in float_samples"))
@@ -132,71 +129,81 @@ pub fn listen(
                             .map(|&s| s as f64)
                             .collect();
 
-                        // let filtered_samples = if let Some(filter) = &mut user_data.filter {
-                        //     filter.apply(&channel_samples)
-                        // } else {
-                        //     channel_samples
-                        // };
                         let filtered_samples = channel_samples;
 
-                        // Determine if tone is detected
                         for &sample in &filtered_samples {
                             max = max.max(sample.abs() as f32);
                         }
 
                         let peak = ((max * 30.0) as usize).clamp(0, 39);
                         let tone_detected = peak as f32 > threshold;
-                        let timeout_duration = 20 * dot_duration; // Define the timeout duration
+                        let timeout_duration = 20 * dot_duration;
                         let now = Instant::now();
                         let duration = now.duration_since(last_signal_change).as_millis() as u32;
 
-                        // Handle signal state changes
+                        // Track the last printed message and its wrapped line count
+                        let mut printed_message = String::new();
+
                         if tone_detected != last_signal_state {
-                            // Send the signal event to the decoder
                             decoder.signal_event(duration as u16, last_signal_state);
-                            let msg = decoder.message.as_str().to_string();
-                            let msg = whitespace_regex.replace_all(&msg, " ");
-                            decoder
-                                .message
-                                .set_message(&msg, true)
-                                .expect("expected to set message");
+                            let mut msg = decoder.message.as_str().to_string();
+                            msg = whitespace_regex.replace_all(&msg, " ").to_string();
+
+                            // Print only the new character
+                            if msg.len() > printed_message.len() {
+                                let new_char =
+                                    &msg[printed_message.len()..printed_message.len() + 1];
+                                print!("{}", new_char);
+                                std::io::stdout().flush().expect("Failed to flush stdout");
+                                printed_message = msg.clone(); // Update the printed message
+                            }
+
                             last_signal_change = now;
                             last_signal_state = tone_detected;
-
-                            // Check if a new character is decoded
-                            if !decoder.message.is_empty() {
-                                // println!("{}", decoder.message.as_str());
-                                // println!("");
-                            }
                         }
 
-                        // Check for timeout if no signal state changes
                         if duration > timeout_duration {
                             last_signal_change = now;
                             last_signal_state = false;
-                            let msg = decoder.message.as_str().to_string();
-                            let msg = whitespace_regex.replace_all(&msg, " ");
-                            decoder
-                                .message
-                                .set_message(&msg, true)
-                                .expect("expected to set message");
-                            if !decoder.message.is_empty() {
+                            let mut msg = decoder.message.as_str().to_string();
+                            msg = whitespace_regex.replace_all(&msg, " ").to_string();
+
+                            if !msg.is_empty() {
                                 decoder.signal_event_end(false);
                                 decoder.signal_event_end(true);
-                                let msg = decoder.message.as_str().to_string();
-                                let msg = whitespace_regex.replace_all(&msg, " ");
-                                decoder
-                                    .message
-                                    .set_message(&msg, true)
-                                    .expect("expected to set message");
-                                // println!("{}", msg);
-                                // println!("");
-                                info!("Decoded message: {}", msg);
+                                msg = decoder.message.as_str().to_string();
+                                msg = whitespace_regex.replace_all(&msg, " ").to_string();
+
+                                // Redraw only if the new message differs from the printed message
+                                if msg != printed_message {
+                                    // Calculate terminal width
+                                    let terminal_width =
+                                        term_size::dimensions().map(|(w, _)| w).unwrap_or(80);
+                                    // Count how many lines the printed message occupies
+                                    let lines_to_clear = printed_message
+                                        .lines()
+                                        .map(|line| {
+                                            (line.len() as f64 / terminal_width as f64).ceil()
+                                                as usize
+                                        })
+                                        .sum::<usize>();
+
+                                    // Clear the previous printed message
+                                    for _ in 0..lines_to_clear {
+                                        print!("\r\x1B[K\x1B[1A"); // Clear line and move up
+                                    }
+                                    print!("\r\x1B[K"); // Clear the last line
+                                    std::io::stdout().flush().expect("Failed to flush stdout");
+
+                                    printed_message = msg.clone(); // Update the printed message
+                                }
+
+                                // Reset the decoder for the next message
+                                info!("{}", &msg);
                                 decoder.message.clear();
                             }
                         }
                     }
-                    user_data.cursor_move = true;
                 }
             }
         })
