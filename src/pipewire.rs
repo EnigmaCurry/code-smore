@@ -43,6 +43,7 @@ pub fn ensure_pipewire() {
         }
     }
 }
+
 pub fn listen(
     tone_freq: f32,
     bandwidth: f32,
@@ -131,11 +132,12 @@ pub fn listen(
                             .map(|&s| s as f64)
                             .collect();
 
-                        let filtered_samples = if let Some(filter) = &mut user_data.filter {
-                            filter.apply(&channel_samples)
-                        } else {
-                            channel_samples
-                        };
+                        // let filtered_samples = if let Some(filter) = &mut user_data.filter {
+                        //     filter.apply(&channel_samples)
+                        // } else {
+                        //     channel_samples
+                        // };
+                        let filtered_samples = channel_samples;
 
                         // Determine if tone is detected
                         for &sample in &filtered_samples {
