@@ -15,7 +15,7 @@ jobs:
 
     steps:
     - name: install dependencies
-      run: sudo apt-get update && sudo apt-get install -y libasound2-dev  libpipewire-0.3-dev pipewire-bin libclang-dev build-essential pkg-config libspa-0.2-dev librust-libspa-dev
+      run: sudo apt-get update && sudo apt-get install -y libasound2-dev  libpipewire-0.3-dev pipewire-bin libclang-dev build-essential pkg-config
 
     - name: Update Rust stable
       run: rustup toolchain install stable
