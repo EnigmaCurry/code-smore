@@ -1,8 +1,3 @@
-use regex::Regex;
-use std::collections::BTreeMap;
-use std::fs;
-use std::io::{self, BufRead};
-
 pub fn print_credits() {
     let license: &str = include_str!("../LICENSE.txt");
     println!("{}", env!("CARGO_PKG_NAME"));
@@ -50,8 +45,7 @@ fn print_deps() -> std::io::Result<()> {
     for (license, packages) in &licenses_map {
         println!("{license}");
 
-        for (name, (versions, repository)) in packages {
-            let versions_str = versions.join(", ");
+        for (name, (_versions, repository)) in packages {
             println!("  {:<30} {}", name, repository,);
         }
 
