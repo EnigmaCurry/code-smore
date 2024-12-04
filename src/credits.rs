@@ -8,7 +8,7 @@ pub fn print_credits() {
 }
 fn print_deps() -> std::io::Result<()> {
     // Read the static file
-    let content = std::fs::read_to_string("licenses.txt")?;
+    let content = include_str!("../licenses.txt");
 
     // Regular expression to match the format: name, version, "license", repository
     let re = regex::Regex::new(r#"^(\S+)\s+(\S+)\s+"([^"]+)"\s+(\S+)$"#).unwrap();
