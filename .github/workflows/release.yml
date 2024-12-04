@@ -55,6 +55,12 @@ jobs:
           echo "${{ steps.get_version.outputs.VERSION }}"
           exit 1
 
+      - name: Generate licenses.txt
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall --locked cargo-about
+          source funcs.sh && build_license
+
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v0
         with:
