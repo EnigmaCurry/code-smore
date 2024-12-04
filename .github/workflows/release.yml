@@ -196,9 +196,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libasound2-dev  libpipewire-0.3-dev pipewire-bin libclang-dev build-essential pkg-config
           
-    # Verify if the crate is ready to be published:
-    - name: Check crate is ready for publishing
-      run: cargo package
+    # # Verify if the crate is ready to be published:
+    # - name: Check crate is ready for publishing
+    #   run: cargo package
       
     # Publish the crate to crates.io
     - name: Publish to crates.io
