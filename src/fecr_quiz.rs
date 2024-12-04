@@ -161,6 +161,7 @@ fn reaction_time_quiz(
         for i in 0..trials {
             prompts.push(target_letters[i as usize % target_letters.len()]);
         }
+        prompts.shuffle(&mut rng);
     }
     for i in 0..trials {
         std::thread::sleep(Duration::from_millis(500));
