@@ -30,6 +30,7 @@ bin-deps:
     cargo binstall --no-confirm cargo-nextest
     cargo binstall --no-confirm git-cliff
     cargo binstall --no-confirm cargo-llvm-cov
+    cargo binstall --no-confirm cargo-license
 
 # Build and run binary + args
 [no-cd]
