@@ -1,6 +1,7 @@
 use clap_complete::shells::Shell;
 
 mod cli;
+mod credits;
 mod fecr_quiz;
 mod filter;
 mod message;
@@ -12,7 +13,7 @@ mod term;
 use prelude::*;
 use std::io::BufRead;
 
-use crate::{morse::text_to_morse, pipewire::ensure_pipewire};
+use crate::{credits::print_credits, morse::text_to_morse, pipewire::ensure_pipewire};
 
 fn main() {
     let mut cmd = cli::app();
@@ -226,6 +227,10 @@ fn main() {
                 );
                 1
             }
+        }
+        Some(("credits", _sub_matches)) => {
+            print_credits();
+            0
         }
         _ => 1,
     };

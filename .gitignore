@@ -1,3 +1,6 @@
+licenses.txt
+licenses.json
+.Cargo-sha256
 /target
 /_test
 /*.profraw

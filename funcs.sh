@@ -126,3 +126,13 @@ check_emacs_unsaved_files() {
         return 1
     fi
 }
+build_license() {
+    local sum
+    sum=$(sha256sum Cargo.toml | cut -d' ' -f1)
+    if ! [[ -f .Cargo-sha256 && $(<.Cargo-sha256) == "$sum" ]]; then
+        echo "$sum" > .Cargo-sha256
+        echo "Building LICENSE ..."
+        cargo about generate about.hbs > licenses.txt
+        cargo about generate --format json > licenses.json
+    fi
+}

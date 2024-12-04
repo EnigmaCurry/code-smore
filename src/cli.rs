@@ -215,4 +215,10 @@ pub fn app() -> Command {
                         .value_parser(["bash", "zsh", "fish"]),
                 ),
         )
+        .subcommand(
+            Command::new("credits")
+                .about(
+                    "Prints license information for all dependencies",
+                )
+        )
 }

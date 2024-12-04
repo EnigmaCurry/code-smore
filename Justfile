@@ -17,6 +17,7 @@ deps:
     cargo install --locked cargo-nextest
     cargo install --locked git-cliff
     cargo install --locked cargo-llvm-cov
+    cargo install --locked cargo-license
     @echo
     @echo "All dependencies have been installed."
     @echo
@@ -36,7 +37,7 @@ run *args:
     cargo run --manifest-path "${current_dir}/Cargo.toml" -- {{args}}
 
 # Build + args
-build *args:
+build *args: build-license
     RUSTFLAGS="-D warnings" cargo build {{args}}
 
 # Build continuously on file change
@@ -122,3 +123,6 @@ clean *args: clean-profile
 # Clean profile artifacts only
 clean-profile:
     rm -rf *.profraw *.profdata
+
+build-license:
+	@bash -c "source funcs.sh && build_license"
