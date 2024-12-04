@@ -1,24 +1,43 @@
+#[allow(unused_imports)]
 use crate::filter::*;
+#[allow(unused_imports)]
 use crate::message::Message;
+#[allow(unused_imports)]
 use crate::morse::text_to_morse;
+#[cfg(target_os = "linux")]
 use crate::pipewire::spa::pod::Pod;
+#[allow(unused_imports)]
 use crate::prelude::*;
+#[allow(unused_imports)]
 use crate::term::log_message;
+#[allow(unused_imports)]
 use chrono::Local;
+#[allow(unused_imports)]
 use morse_codec::decoder::Decoder;
+#[cfg(target_os = "linux")]
 use pipewire as pw;
+#[cfg(target_os = "linux")]
 use pw::properties::properties;
+#[cfg(target_os = "linux")]
 use pw::{context::Context, main_loop::MainLoop, spa};
+#[allow(unused_imports)]
 use regex::Regex;
+#[allow(unused_imports)]
 use std::process::Command;
+#[allow(unused_imports)]
 use std::time::Instant;
 
+#[cfg(target_os = "linux")]
 struct UserData {
     format: spa::param::audio::AudioInfoRaw,
     filter: Option<BandpassFilter>,
     message_log: Vec<Message>,
 }
 
+#[cfg(target_os = "windows")]
+pub fn ensure_pipewire() {}
+
+#[cfg(target_os = "linux")]
 pub fn ensure_pipewire() {
     let service_status = Command::new("systemctl")
         .args(["--user", "is-active", "pipewire"])
@@ -47,6 +66,18 @@ pub fn ensure_pipewire() {
     }
 }
 
+#[cfg(target_os = "windows")]
+pub fn listen(
+    _tone_freq: f32,
+    _bandwidth: f32,
+    _threshold: f32,
+    _dot_duration: u32,
+    _output_morse: bool,
+) -> Result<(), std::io::Error> {
+    return Ok(());
+}
+
+#[cfg(target_os = "linux")]
 pub fn listen(
     tone_freq: f32,
     bandwidth: f32,

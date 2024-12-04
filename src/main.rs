@@ -13,7 +13,9 @@ mod term;
 use prelude::*;
 use std::io::BufRead;
 
-use crate::{credits::print_credits, morse::text_to_morse, pipewire::ensure_pipewire};
+use crate::pipewire::ensure_pipewire;
+
+use crate::{credits::print_credits, morse::text_to_morse};
 
 fn main() {
     let mut cmd = cli::app();

@@ -7,11 +7,13 @@ use crossterm::{
 };
 use std::io::stdout;
 
+#[allow(dead_code)]
 pub fn clear_screen() {
     let mut stdout = stdout();
     execute!(stdout, Clear(ClearType::All), MoveTo(0, 0)).unwrap();
 }
 
+#[allow(dead_code)]
 pub fn log_message(message: &Message) {
     // Get the terminal dimensions
     let terminal_width = term_size::dimensions().map_or(80, |(w, _)| w);

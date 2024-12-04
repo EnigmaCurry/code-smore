@@ -7,7 +7,7 @@ platform may be required.
 
 ```
 sudo dnf install @development-tools @development-libs git openssh rustup \
-                 alsa-lib-devel pipewire-devel pipewire-utils clang-devel
+                 alsa-lib-devel pipewire-devel pipewire-utils clang-devel mingw64-gcc
 ```
 
 ## Install rust and cargo

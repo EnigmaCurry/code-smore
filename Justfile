@@ -41,6 +41,11 @@ run *args:
 build *args: build-license
     RUSTFLAGS="-D warnings" cargo build {{args}}
 
+# Build for Windows x86_64
+build-windows *args: build-license
+    rustup target add x86_64-pc-windows-gnu
+    RUSTFLAGS="-D warnings" cargo build --target x86_64-pc-windows-gnu {{args}}
+
 # Build continuously on file change
 build-watch *args:
     cargo watch -s "clear && cargo build {{args}}"

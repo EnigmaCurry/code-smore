@@ -14,6 +14,7 @@ impl BandpassFilter {
     /// * `tone_freq` - The center freq in Hz.
     /// * `bandwidth` - The filter bandwidth in Hz.
     /// * `sample_rate` - The sampling frequency in Hz.
+    #[allow(dead_code)]
     pub fn new(
         order: usize,
         tone_freq: f64,
