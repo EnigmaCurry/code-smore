@@ -155,9 +155,9 @@ pipewire, so it should hear the same thing that you hear. Use the
 `--wpm` argument to specify the expected (ballpark) rate of
 transmission.
 
-You can test the decoder by running `code-smore read --wpm 35` in
+You can test the decoder by running `code-smore read` in
 another terminal and watch it copy you. [Try playing this
-video](https://youtube.com/watch?v=FxRN2nP_9dA).
+video](https://youtube.com/watch?v=FxRN2nP_9dA). (try setting `--wpm 45`)
 
 Please note that the the signal must be communication grade with no
 interference. If you have any other sound playing in the background,
