@@ -143,17 +143,26 @@ $ echo "Hello World" | code-smore read --text | code-smore read --morse --wpm 10
 
 > **Note:** This feature is supported on Linux pipewire enabled systems only.
 
-code-smore can listen to the other programs running on your computer
-and can decode morse code audio. 
+code-smore can listen to any other programs running on your computer
+and can decode morse code audio from them.
 
 ```
-code-smore listen --wpm 20
+code-smore listen --wpm 35
 ```
 
 code-smore will listen to the monitor of your default sound device in
-pipewire. Use the `--wpm` argument to specify the expected rate of
-transmission. There is some leeway here so it does not need to be
-exact.
+pipewire, so it should hear the same thing that you hear. Use the
+`--wpm` argument to specify the expected (ballpark) rate of
+transmission.
+
+You can test the decoder by running `code-smore read --wpm 35` in
+another terminal and watch it copy you. [Try playing this
+video](https://youtube.com/watch?v=FxRN2nP_9dA).
+
+Please note that the the signal must be communication grade with no
+interference. If you have any other sound playing in the background,
+it will negatively affect the signal copy. Filtering signals has not
+been implemented yet.
 
 ## Tab completion
 
