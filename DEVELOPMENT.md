@@ -1,19 +1,28 @@
 # Development
 
-These instructions are specific to Fedora; minor adjustments for your
-platform may be required.
-
 ## Install host dependencies
 
+On Fedora:
+
 ```
-sudo dnf install @development-tools @development-libs git openssh rustup \
-                 alsa-lib-devel pipewire-devel pipewire-utils clang-devel mingw64-gcc
+sudo dnf install -y @development-tools @development-libs git openssh \
+                    alsa-lib-devel pipewire-devel pipewire-utils \
+                    clang-devel mingw64-gcc
+```
+
+On Debian / Ubuntu:
+
+```
+sudo apt update && \
+sudo apt install -y build-essential git ssh libasound2-dev \
+                    libpipewire-0.3-dev pipewire-bin libclang-dev \
+                    mingw-w64-x86-64-dev pkg-config curl
 ```
 
 ## Install rust and cargo
 
 ```
-rustup-init ## just press enter when prompted for default selection
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 . "$HOME/.cargo/env"
 ```
 
