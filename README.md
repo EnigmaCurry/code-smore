@@ -157,7 +157,7 @@ transmission.
 
 You can test the decoder by running `code-smore read` in
 another terminal and watch it copy you. [Try playing this
-video](https://youtube.com/watch?v=FxRN2nP_9dA). (try setting `--wpm 45`)
+video](https://youtube.com/watch?v=FxRN2nP_9dA). (try various `--wpm` 25 to 45.)
 
 Please note that the the signal must be communication grade with no
 interference. If you have any other sound playing in the background,
