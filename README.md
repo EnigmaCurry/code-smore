@@ -147,7 +147,7 @@ code-smore can listen to any other programs running on your computer
 and can decode morse code audio from them.
 
 ```
-code-smore listen --wpm 35
+code-smore listen --wpm 20
 ```
 
 code-smore will listen to the monitor of your default sound device in
