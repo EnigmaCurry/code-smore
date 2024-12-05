@@ -10,6 +10,7 @@ mod pipewire;
 mod prelude;
 mod term;
 
+use is_terminal::IsTerminal;
 use prelude::*;
 use std::io::BufRead;
 
@@ -111,7 +112,7 @@ fn main() {
                 .expect("Missing --morse arg default");
 
             let stdin = std::io::stdin();
-            if atty::is(atty::Stream::Stdin) {
+            if stdin.is_terminal() {
                 println!("## Type some text and it will be output as morse code.");
                 println!("## You may also pipe text to this same command.");
                 println!("## Press Enter after each line.");

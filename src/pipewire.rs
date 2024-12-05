@@ -149,6 +149,8 @@ pub fn listen(
 
                     for c in 0..n_channels {
                         let mut max: f32 = 0.0;
+                        let mut sum = 0.0_f32;
+                        let mut count = 0;
 
                         let channel_samples: Vec<f64> = float_samples
                             .iter()
@@ -159,12 +161,16 @@ pub fn listen(
 
                         let filtered_samples = channel_samples;
 
+                        // Find peak and average sample
                         for &sample in &filtered_samples {
-                            max = max.max(sample.abs() as f32);
+                            let abs_sample = sample.abs() as f32;
+                            max = max.max(abs_sample);
+                            sum += abs_sample;
+                            count += 1;
                         }
-
-                        let peak = ((max * 30.0) as usize).clamp(0, 39);
-                        let tone_detected = peak as f32 > threshold;
+                        let average = if count > 0 { sum / count as f32 } else { 0.0 } * 30.0;
+                        //println!("{average}");
+                        let tone_detected = average as f32 > threshold;
                         let timeout_duration = 20 * dot_duration;
                         let now = Instant::now();
                         let duration = now.duration_since(last_signal_change).as_millis() as u32;

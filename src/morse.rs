@@ -1,9 +1,8 @@
 use rodio::{OutputStream, Sink, Source};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-
-use std::collections::HashMap;
 
 /// Custom audio source for generating tones
 struct Tone {
@@ -17,7 +16,8 @@ impl Iterator for Tone {
     type Item = f32;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_sample >= (self.sample_rate * self.duration / 1000) {
+        let total_samples = self.sample_rate * self.duration / 1000;
+        if self.current_sample >= total_samples {
             return None; // End of the tone
         }
 
@@ -25,8 +25,20 @@ impl Iterator for Tone {
         let t = self.current_sample as f32 / self.sample_rate as f32;
         let sample = (2.0 * std::f32::consts::PI * self.freq * t).sin();
 
+        // Apply envelope (attack and release)
+        let amplitude = if self.current_sample < (0.001 * self.sample_rate as f32) as u32 {
+            // Attack phase
+            self.current_sample as f32 / (0.001 * self.sample_rate as f32)
+        } else if self.current_sample > total_samples - (0.001 * self.sample_rate as f32) as u32 {
+            // Release phase
+            (total_samples - self.current_sample) as f32 / (0.001 * self.sample_rate as f32)
+        } else {
+            // Sustain phase
+            1.0
+        };
+
         self.current_sample += 1;
-        Some(sample)
+        Some(sample * amplitude)
     }
 }
 
