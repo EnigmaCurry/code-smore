@@ -54,6 +54,15 @@ pub fn app() -> Command {
                 ),
         )
         .arg(
+            Arg::new("gpio")
+                .long("gpio")
+                .global(true)
+                .action(clap::ArgAction::SetTrue)
+                .help(
+                    "Output to gpio in addition to the --text and --sound options",
+                ),
+        )
+        .arg(
             Arg::new("log")
                 .long("log")
                 .global(true)

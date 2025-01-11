@@ -1,6 +1,10 @@
+#[allow(unused_imports)]
+use crate::prelude::*;
+#[cfg(feature = "audio")]
 use rodio::{OutputStream, Sink, Source};
 use std::collections::HashMap;
 use std::sync::Arc;
+#[allow(unused_imports)]
 use std::thread;
 use std::time::Duration;
 
@@ -42,6 +46,7 @@ impl Iterator for Tone {
     }
 }
 
+#[cfg(feature = "audio")]
 impl Source for Tone {
     fn current_frame_len(&self) -> Option<usize> {
         None
@@ -196,6 +201,7 @@ fn morse_to_tones(morse_code: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f
 }
 
 /// Morse code generator
+#[cfg(feature = "audio")]
 fn play_morse_code(tones: Vec<(f32, u32)>, sink: &Sink) {
     let sample_rate = 44100;
 
@@ -210,24 +216,37 @@ fn play_morse_code(tones: Vec<(f32, u32)>, sink: &Sink) {
 }
 
 pub struct MorsePlayer {
+    #[cfg(feature = "audio")]
     #[allow(dead_code)]
     stream: Arc<OutputStream>, // Keep the stream alive
+
+    #[cfg(feature = "audio")]
     stream_handle: Arc<rodio::OutputStreamHandle>, // Shareable stream handle
 }
 
 impl MorsePlayer {
     pub fn new() -> Self {
-        // Set up the audio output once
-        let stream = OutputStream::try_default().unwrap();
-        let stream_handle = Arc::new(stream.1);
+        #[cfg(feature = "audio")]
+        {
+            // Set up the audio output once
+            let stream = OutputStream::try_default().unwrap();
+            let stream_handle = Arc::new(stream.1);
 
-        Self {
-            #[allow(clippy::arc_with_non_send_sync)]
-            stream: Arc::new(stream.0),
-            stream_handle,
+            return Self {
+                #[allow(clippy::arc_with_non_send_sync)]
+                stream: Arc::new(stream.0),
+                stream_handle,
+            };
+        }
+
+        #[cfg(not(feature = "audio"))]
+        {
+            error!("'audio' feature is disabled in the Cargo build. Program cannot play audio.");
+            Self {}
         }
     }
 
+    #[cfg(feature = "audio")]
     pub fn play_gap(&self, dot_duration: u32) {
         let tones = vec![(0.0, dot_duration)];
         let sink = Sink::try_new(&self.stream_handle).unwrap();
@@ -235,15 +254,28 @@ impl MorsePlayer {
         sink.sleep_until_end();
     }
 
+    #[cfg(not(feature = "audio"))]
+    pub fn play_gap(&self, _dot_duration: u32) {
+        //error!("'audio' feature is disabled in the Cargo build. Program cannot play audio.");
+    }
+
+    #[cfg(feature = "audio")]
     pub fn play_nonblocking_tone(&self, dot_duration: u32, tone_freq: f32) {
         let stream_handle = self.stream_handle.clone();
-        thread::spawn(move || {
+        std::thread::spawn(move || {
             let tones = vec![(tone_freq, dot_duration)];
             let sink = Sink::try_new(&stream_handle).unwrap();
             play_morse_code(tones, &sink);
             sink.sleep_until_end(); // Blocks within this thread, not the main one
         });
     }
+
+    #[cfg(not(feature = "audio"))]
+    pub fn play_nonblocking_tone(&self, _dot_duration: u32, _tone_freq: f32) {
+        //error!("Error: Audio feature is disabled. Cannot play non-blocking tone.");
+    }
+
+    #[cfg(feature = "audio")]
     pub fn play_morse(&self, message: &str, dot_duration: u32, tone_freq: f32) {
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         let tones = morse_to_tones(message, dot_duration, tone_freq);
@@ -251,11 +283,61 @@ impl MorsePlayer {
         sink.sleep_until_end();
     }
 
+    #[cfg(feature = "audio")]
     pub fn play(&self, message: &str, dot_duration: u32, tone_freq: f32) {
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         let tones = encode_morse(message, dot_duration, tone_freq);
         play_morse_code(tones, &sink);
         sink.sleep_until_end();
+    }
+
+    #[cfg(not(feature = "audio"))]
+    pub fn play(&self, _message: &str, _dot_duration: u32, _tone_freq: f32) {
+        //error!("Error: Audio feature is disabled. Cannot play Morse code.");
+    }
+
+    #[cfg(not(feature = "audio"))]
+    pub fn play_morse(&self, _message: &str, _dot_duration: u32, _tone_freq: f32) {
+        //error!("Error: Audio feature is disabled. Cannot play Morse code.");
+    }
+
+    #[cfg(feature = "gpio")]
+    pub fn gpio_morse(&self, message: &str, dot_duration: u32) {
+        // GPIO-specific Morse code implementation
+        println!(
+            "GPIO Morse: message = {}, dot_duration = {}",
+            message, dot_duration
+        );
+    }
+
+    #[cfg(not(feature = "gpio"))]
+    pub fn gpio_morse(&self, _message: &str, _dot_duration: u32) {
+        //error!("Error: GPIO feature is disabled. Cannot play Morse code via GPIO.");
+    }
+
+    #[cfg(feature = "gpio")]
+    pub fn gpio(&self, message: &str, dot_duration: u32) {
+        println!(
+            "GPIO: Processing message = {}, dot_duration = {}",
+            message, dot_duration
+        );
+        // Add actual GPIO logic here
+    }
+
+    #[cfg(not(feature = "gpio"))]
+    pub fn gpio(&self, _message: &str, _dot_duration: u32) {
+        //error!("Error: GPIO feature is disabled. Cannot perform GPIO operations.");
+    }
+
+    #[cfg(feature = "gpio")]
+    pub fn gpio_gap(&self, dot_duration: u32) {
+        println!("GPIO: Creating gap of duration {} ms", dot_duration);
+        // Add actual GPIO gap logic here
+    }
+
+    #[cfg(not(feature = "gpio"))]
+    pub fn gpio_gap(&self, _dot_duration: u32) {
+        //error!("Error: GPIO feature is disabled. Cannot perform GPIO gap.");
     }
 }
 

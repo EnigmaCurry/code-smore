@@ -55,6 +55,9 @@ fn main() {
     let sound = *matches
         .get_one::<bool>("sound")
         .expect("Missing --sound arg default");
+    let gpio = *matches
+        .get_one::<bool>("gpio")
+        .expect("Missing --gpio arg default");
 
     // Calculate dot duration from wpm if not provided:
     let dot_duration = match (matches.get_one::<u32>("dot"), matches.get_one::<u32>("wpm")) {
@@ -130,6 +133,10 @@ fn main() {
                                     player.play_morse(&line, dot_duration, tone_freq);
                                     player.play_gap(dot_duration * 14);
                                 }
+                                if gpio {
+                                    player.gpio_morse(&line, dot_duration);
+                                    player.gpio_gap(dot_duration * 14);
+                                }
                             } else {
                                 // Encode stdin as morse code:
                                 println!("{}", morse::text_to_morse(&line));
@@ -137,15 +144,27 @@ fn main() {
                                     player.play(&line, dot_duration, tone_freq);
                                     player.play_gap(dot_duration * 14);
                                 }
+                                if gpio {
+                                    player.gpio(&line, dot_duration);
+                                    player.gpio_gap(dot_duration * 14);
+                                }
                             }
                         } else if *morse {
                             // stdin is already morse encoded:
                             player.play_morse(&line, dot_duration, tone_freq);
                             player.play_gap(dot_duration * 14);
+                            if gpio {
+                                player.gpio_morse(&line, dot_duration);
+                                player.gpio_gap(dot_duration * 14);
+                            }
                         } else {
                             // Convert stdin into morse and play it:
                             player.play(&line, dot_duration, tone_freq);
                             player.play_gap(dot_duration * 14);
+                            if gpio {
+                                player.gpio(&line, dot_duration);
+                                player.gpio_gap(dot_duration * 14);
+                            }
                         }
                     }
                     Err(e) => eprintln!("Error reading line: {}", e),
