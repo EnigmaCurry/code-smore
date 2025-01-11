@@ -58,6 +58,7 @@ fn main() {
     let gpio = *matches
         .get_one::<bool>("gpio")
         .expect("Missing --gpio arg default");
+    let gpio_pin: u8 = matches.get_one::<u8>("gpio-pin").copied().unwrap_or(0);
 
     // Calculate dot duration from wpm if not provided:
     let dot_duration = match (matches.get_one::<u32>("dot"), matches.get_one::<u32>("wpm")) {
@@ -132,10 +133,9 @@ fn main() {
                                 if sound {
                                     player.play_morse(&line, dot_duration, tone_freq);
                                     player.play_gap(dot_duration * 14);
-                                }
-                                if gpio {
-                                    player.gpio_morse(&line, dot_duration);
-                                    player.gpio_gap(dot_duration * 14);
+                                } else if gpio {
+                                    player.gpio_morse(&line, dot_duration, gpio_pin);
+                                    player.gpio_gap(dot_duration * 14, gpio_pin);
                                 }
                             } else {
                                 // Encode stdin as morse code:
@@ -143,27 +143,30 @@ fn main() {
                                 if sound {
                                     player.play(&line, dot_duration, tone_freq);
                                     player.play_gap(dot_duration * 14);
-                                }
-                                if gpio {
-                                    player.gpio(&line, dot_duration);
-                                    player.gpio_gap(dot_duration * 14);
+                                } else if gpio {
+                                    player.gpio(&line, dot_duration, gpio_pin);
+                                    player.gpio_gap(dot_duration * 14, gpio_pin);
                                 }
                             }
                         } else if *morse {
                             // stdin is already morse encoded:
-                            player.play_morse(&line, dot_duration, tone_freq);
-                            player.play_gap(dot_duration * 14);
                             if gpio {
-                                player.gpio_morse(&line, dot_duration);
-                                player.gpio_gap(dot_duration * 14);
+                                player.gpio_morse(&line, dot_duration, gpio_pin);
+                                player.gpio_gap(dot_duration * 14, gpio_pin);
+                            } else {
+                                // Sound is the default:
+                                player.play_morse(&line, dot_duration, tone_freq);
+                                player.play_gap(dot_duration * 14);
                             }
                         } else {
                             // Convert stdin into morse and play it:
-                            player.play(&line, dot_duration, tone_freq);
-                            player.play_gap(dot_duration * 14);
                             if gpio {
-                                player.gpio(&line, dot_duration);
-                                player.gpio_gap(dot_duration * 14);
+                                player.gpio(&line, dot_duration, gpio_pin);
+                                player.gpio_gap(dot_duration * 14, gpio_pin);
+                            } else {
+                                // Sound is the default:
+                                player.play(&line, dot_duration, tone_freq);
+                                player.play_gap(dot_duration * 14);
                             }
                         }
                     }

@@ -2,10 +2,12 @@
 use crate::prelude::*;
 #[cfg(feature = "audio")]
 use rodio::{OutputStream, Sink, Source};
+#[cfg(feature = "gpio")]
+use rppal;
 use std::collections::HashMap;
 use std::sync::Arc;
 #[allow(unused_imports)]
-use std::thread;
+use std::thread::{self, sleep};
 use std::time::Duration;
 
 /// Custom audio source for generating tones
@@ -215,6 +217,24 @@ fn play_morse_code(tones: Vec<(f32, u32)>, sink: &Sink) {
     }
 }
 
+#[cfg(feature = "gpio")]
+fn gpio_morse_code(tones: Vec<(f32, u32)>, pin_number: u8) {
+    let gpio = rppal::gpio::Gpio::new().expect("Failed to access GPIO");
+    let mut pin = gpio
+        .get(pin_number)
+        .expect("Failed to get GPIO pin")
+        .into_output();
+    for (frequency, duration) in tones {
+        if frequency == 0. || duration == 0 {
+            pin.set_low();
+        } else {
+            pin.set_high();
+        }
+        sleep(Duration::from_millis(duration.into()));
+    }
+    pin.set_low();
+}
+
 pub struct MorsePlayer {
     #[cfg(feature = "audio")]
     #[allow(dead_code)]
@@ -272,7 +292,7 @@ impl MorsePlayer {
 
     #[cfg(not(feature = "audio"))]
     pub fn play_nonblocking_tone(&self, _dot_duration: u32, _tone_freq: f32) {
-        //error!("Error: Audio feature is disabled. Cannot play non-blocking tone.");
+        error!("Error: Audio feature is disabled. Cannot play non-blocking tone.");
     }
 
     #[cfg(feature = "audio")]
@@ -293,51 +313,50 @@ impl MorsePlayer {
 
     #[cfg(not(feature = "audio"))]
     pub fn play(&self, _message: &str, _dot_duration: u32, _tone_freq: f32) {
-        //error!("Error: Audio feature is disabled. Cannot play Morse code.");
+        error!("Error: Audio feature is disabled. Cannot play Morse code.");
     }
 
     #[cfg(not(feature = "audio"))]
     pub fn play_morse(&self, _message: &str, _dot_duration: u32, _tone_freq: f32) {
-        //error!("Error: Audio feature is disabled. Cannot play Morse code.");
+        error!("Error: Audio feature is disabled. Cannot play Morse code.");
     }
 
     #[cfg(feature = "gpio")]
-    pub fn gpio_morse(&self, message: &str, dot_duration: u32) {
-        // GPIO-specific Morse code implementation
-        println!(
-            "GPIO Morse: message = {}, dot_duration = {}",
-            message, dot_duration
-        );
+    pub fn gpio_morse(&self, message: &str, dot_duration: u32, pin_number: u8) {
+        let tones = morse_to_tones(message, dot_duration, 333.); //frequncy is unused but must be >0
+        gpio_morse_code(tones, pin_number);
+    }
+
+    #[cfg(feature = "gpio")]
+    pub fn gpio(&self, message: &str, dot_duration: u32, pin_number: u8) {
+        let tones = encode_morse(message, dot_duration, 333.); //frequency is unused but must be >0
+        gpio_morse_code(tones, pin_number);
     }
 
     #[cfg(not(feature = "gpio"))]
     pub fn gpio_morse(&self, _message: &str, _dot_duration: u32) {
-        //error!("Error: GPIO feature is disabled. Cannot play Morse code via GPIO.");
-    }
-
-    #[cfg(feature = "gpio")]
-    pub fn gpio(&self, message: &str, dot_duration: u32) {
-        println!(
-            "GPIO: Processing message = {}, dot_duration = {}",
-            message, dot_duration
-        );
-        // Add actual GPIO logic here
+        error!("Error: GPIO feature is disabled. Cannot play Morse code via GPIO.");
     }
 
     #[cfg(not(feature = "gpio"))]
     pub fn gpio(&self, _message: &str, _dot_duration: u32) {
-        //error!("Error: GPIO feature is disabled. Cannot perform GPIO operations.");
+        error!("Error: GPIO feature is disabled. Cannot perform GPIO operations.");
     }
 
     #[cfg(feature = "gpio")]
-    pub fn gpio_gap(&self, dot_duration: u32) {
-        println!("GPIO: Creating gap of duration {} ms", dot_duration);
-        // Add actual GPIO gap logic here
+    pub fn gpio_gap(&self, dot_duration: u32, pin_number: u8) {
+        let mut pin = rppal::gpio::Gpio::new()
+            .expect("Failed to access GPIO")
+            .get(pin_number)
+            .expect("Failed to get GPIO pin")
+            .into_output();
+        pin.set_low();
+        sleep(Duration::from_millis(dot_duration.into()));
     }
 
     #[cfg(not(feature = "gpio"))]
     pub fn gpio_gap(&self, _dot_duration: u32) {
-        //error!("Error: GPIO feature is disabled. Cannot perform GPIO gap.");
+        error!("Error: GPIO feature is disabled. Cannot perform GPIO gap.");
     }
 }
 

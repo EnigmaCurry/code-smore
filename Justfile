@@ -49,10 +49,10 @@ build-windows *args: build-license
     RUSTFLAGS="-D warnings" cargo build --target x86_64-pc-windows-gnu {{args}}
 
 
-# Build for Windows x86_64
+# Build for Linux ARM64
 build-aarch64 *args: build-license
     rustup target add aarch64-unknown-linux-gnu
-    cargo zigbuild --features gpio,audio --target aarch64-unknown-linux-gnu --release
+    cargo zigbuild --no-default-features --features gpio --target aarch64-unknown-linux-gnu --release
 
 # Build continuously on file change
 build-watch *args:
@@ -140,3 +140,6 @@ clean-profile:
 
 build-license:
 	@bash -c "source funcs.sh && build_license"
+
+copy-pi: build-aarch64
+    scp target/aarch64-unknown-linux-gnu/release/code-smore streamdeck:
