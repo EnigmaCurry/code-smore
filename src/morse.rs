@@ -226,8 +226,10 @@ fn gpio_morse_code(tones: Vec<(f32, u32)>, pin_number: u8) {
         .into_output();
     for (frequency, duration) in tones {
         if frequency == 0. || duration == 0 {
+            //info!("gap: d: {duration}");
             pin.set_low();
         } else {
+            //info!("f: {frequency} d: {duration}");
             pin.set_high();
         }
         sleep(Duration::from_millis(duration.into()));
