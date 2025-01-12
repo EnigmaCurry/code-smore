@@ -263,7 +263,7 @@ impl MorsePlayer {
 
         #[cfg(not(feature = "audio"))]
         {
-            error!("'audio' feature is disabled in the Cargo build. Program cannot play audio.");
+            error!("'audio' feature is disabled in this Cargo build. Program cannot play audio.");
             Self {}
         }
     }
@@ -278,7 +278,7 @@ impl MorsePlayer {
 
     #[cfg(not(feature = "audio"))]
     pub fn play_gap(&self, _dot_duration: u32) {
-        //error!("'audio' feature is disabled in the Cargo build. Program cannot play audio.");
+        error!("'audio' feature is disabled in this Cargo build. Program cannot play audio.");
     }
 
     #[cfg(feature = "audio")]
@@ -361,8 +361,6 @@ impl MorsePlayer {
         error!("Error: GPIO feature is disabled. Cannot perform GPIO gap.");
     }
 }
-
-//pub fn play_intro(message: &str, dot_duration: u32, tone_freq: f32) {}
 
 #[cfg(test)]
 mod tests {

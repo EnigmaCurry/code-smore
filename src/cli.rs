@@ -133,9 +133,9 @@ pub fn app() -> Command {
             "Test that sound is working",
         ))
         .subcommand(
-            Command::new("read")
+            Command::new("send")
                 .about(
-                    "Read text from stdin and output it as morse code",
+                    "Send text from stdin as morse code",
                 )
                 .arg(
                     Arg::new("morse")
@@ -147,9 +147,9 @@ pub fn app() -> Command {
                 ),
         )
         .subcommand(
-            Command::new("listen")
+            Command::new("receive")
                 .about(
-                    "listen to morse code from a file or audio device and output it",
+                    "Receive morse code from an audio device, audio file, or GPIO.",
                 )
                 .arg(
                     Arg::new("morse")
@@ -201,14 +201,14 @@ pub fn app() -> Command {
                     Arg::new("file")
                         .short('f')
                         .long("file")
-                        .help("Read morse code from an audio file")
+                        .help("Receive morse code from an audio file")
                         .conflicts_with("device"), // Ensures `--file` and `--device` are mutually exclusive
                 )
                 .arg(
                     Arg::new("device")
                         .short('d')
                         .long("device")
-                        .help("Read morse code from an audio device")
+                        .help("Receive morse code from an audio device")
                         .conflicts_with("file"), // Ensures `--device` and `--file` are mutually exclusive
                 ),
         )

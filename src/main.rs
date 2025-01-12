@@ -13,6 +13,7 @@ mod term;
 use is_terminal::IsTerminal;
 use prelude::*;
 use std::io::BufRead;
+use std::u8;
 
 use crate::pipewire::ensure_pipewire;
 
@@ -107,7 +108,7 @@ fn main() {
             player.play(message, dot_duration, tone_freq);
             0
         }
-        Some(("read", sub_matches)) => {
+        Some(("send", sub_matches)) => {
             let player = morse::MorsePlayer::new();
             let morse = sub_matches
                 .get_one::<bool>("morse")
@@ -173,7 +174,7 @@ fn main() {
             }
             0
         }
-        Some(("listen", sub_matches)) => {
+        Some(("receive", sub_matches)) => {
             //
             let morse = sub_matches
                 .get_one::<bool>("morse")
