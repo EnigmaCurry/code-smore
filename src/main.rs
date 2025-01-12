@@ -55,10 +55,8 @@ fn main() {
     let sound = *matches
         .get_one::<bool>("sound")
         .expect("Missing --sound arg default");
-    let gpio = *matches
-        .get_one::<bool>("gpio")
-        .expect("Missing --gpio arg default");
-    let gpio_pin: u8 = matches.get_one::<u8>("gpio-pin").copied().unwrap_or(0);
+    let gpio = matches.get_one::<u8>("gpio").is_some();
+    let gpio_pin: u8 = matches.get_one::<u8>("gpio").copied().unwrap_or(u8::MAX);
 
     // Calculate dot duration from wpm if not provided:
     let dot_duration = match (matches.get_one::<u32>("dot"), matches.get_one::<u32>("wpm")) {

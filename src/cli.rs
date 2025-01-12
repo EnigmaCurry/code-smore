@@ -58,22 +58,10 @@ pub fn app() -> Command {
             Arg::new("gpio")
                 .long("gpio")
                 .global(true)
-                .action(clap::ArgAction::SetTrue)
-                .conflicts_with("sound")
-                .requires("gpio-pin")
-                .help(
-                    "Output to GPIO instead of the sound device (can be combined with --text)",
-                ),
-        )
-        .arg(
-            Arg::new("gpio-pin")
-                .long("gpio-pin")
-                .global(true)
                 .value_parser(clap::value_parser!(u8))
-                .value_name("number")
-                .requires("gpio")
+                .value_name("pin-number")
                 .help(
-                    "Select the GPIO pin number (BCM) to use",
+                    "Use GPIO instead of the sound device (select GPIO pin number)",
                 ),
         )
         .arg(
