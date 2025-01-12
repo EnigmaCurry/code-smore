@@ -29,8 +29,9 @@ Usage: code-smore [OPTIONS] [COMMAND]
 Commands:
   fecr-quiz   Start the Fast Enough Character Recognition quiz
   test-sound  Test that sound is working
-  read        Read text from stdin and output it as morse code
-  listen      listen to morse code from a file or audio device and output it
+  send        Send text from stdin as morse code
+  receive     Receive morse code from an audio device, audio file, or GPIO.
+  credits     Prints license information for all dependencies
   help        Print this message or the help of the given subcommand(s)
 
 Options:
@@ -39,6 +40,7 @@ Options:
       --tone <TONE_FREQ>    Sets the tone frequency in Hz [default: 440.0]
       --text                Output text rather than sound
       --sound               Output sound in addition to the --text option
+      --gpio <pin-number>   Use GPIO instead of the sound device (select GPIO pin number)
   -h, --help                Print help
   -V, --version             Print version
 ```
@@ -82,7 +84,7 @@ If you choose not to provide a personal baseline value, the default of 500 milli
 
 Another technique for evaluating your baseline reaction time is to use
 a simplified fecr-quiz which finds your reaction time to the simplest Morse code 
-letters, E and T.  
+letters, E and T.
 
 ```
 $ code-smore fecr-quiz -b 0 -c ET --trials 8 --random
@@ -98,33 +100,33 @@ The quiz supports these optional named arguments:
       --text                     Output text (cheat)
 ```
 
-## Read and encode from stdin
+## Send and encode from stdin
 
 You can send text to have it encoded into morse code:
 
 To encode plain text and play back morse code as sound:
 
 ```
-$ echo "Hello World" | code-smore read
+$ echo "Hello World" | code-smore send
 ```
 
 To encode plain text to morse code text (no sound):
 
 ```
-$ echo "Hello World" | code-smore read --text
+$ echo "Hello World" | code-smore send --text
 .... . .-.. .-.. --- / .-- --- .-. .-.. -..
 ```
 
 To encode plain text and output morse code text and sound:
 
 ```
-$ echo "Hello World" | code-smore read --text --sound
+$ echo "Hello World" | code-smore send --text --sound
 ```
 
-To read plain text interactively and output morse code and sound:
+To send plain text interactively and output morse code and sound:
 
 ```
-$ code-smore read --text --sound
+$ code-smore send --text --sound
 ## Type some text and it will be output as morse code.
 ## You may also pipe text to this same command.
 ## Press Enter after each line.
@@ -136,18 +138,18 @@ Encode text and playback as separate steps in a pipeline, playback at 10WPM:
 
 ```
 ## --morse expects text to already be morse encoded:
-$ echo "Hello World" | code-smore read --text | code-smore read --morse --wpm 10
+$ echo "Hello World" | code-smore send --text | code-smore send --morse --wpm 10
 ```
 
-## Listen and decode audio
+## Receive and decode audio
 
 > **Note:** This feature is supported on Linux pipewire enabled systems only.
 
-code-smore can listen to any other programs running on your computer
+code-smore can receive to any other programs running on your computer
 and can decode morse code audio from them.
 
 ```
-code-smore listen --wpm 20
+code-smore receive --wpm 20
 ```
 
 code-smore will listen to the monitor of your default sound device in
@@ -155,7 +157,7 @@ pipewire, so it should hear the same thing that you hear. Use the
 `--wpm` argument to specify the expected (ballpark) rate of
 transmission.
 
-You can test the decoder by running `code-smore read` in
+You can test the decoder by running `code-smore send` in
 another terminal and watch it copy you. [Try playing this
 video](https://youtube.com/watch?v=FxRN2nP_9dA). (try various `--wpm` 25 to 45.)
 
