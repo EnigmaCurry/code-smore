@@ -13,6 +13,7 @@ mod term;
 use is_terminal::IsTerminal;
 use prelude::*;
 use std::io::BufRead;
+use std::u8;
 
 use crate::pipewire::ensure_pipewire;
 
@@ -55,6 +56,8 @@ fn main() {
     let sound = *matches
         .get_one::<bool>("sound")
         .expect("Missing --sound arg default");
+    let gpio = matches.get_one::<u8>("gpio").is_some();
+    let gpio_pin: u8 = matches.get_one::<u8>("gpio").copied().unwrap_or(u8::MAX);
 
     // Calculate dot duration from wpm if not provided:
     let dot_duration = match (matches.get_one::<u32>("dot"), matches.get_one::<u32>("wpm")) {
@@ -105,7 +108,7 @@ fn main() {
             player.play(message, dot_duration, tone_freq);
             0
         }
-        Some(("read", sub_matches)) => {
+        Some(("send", sub_matches)) => {
             let player = morse::MorsePlayer::new();
             let morse = sub_matches
                 .get_one::<bool>("morse")
@@ -129,6 +132,9 @@ fn main() {
                                 if sound {
                                     player.play_morse(&line, dot_duration, tone_freq);
                                     player.play_gap(dot_duration * 14);
+                                } else if gpio {
+                                    player.gpio_morse(&line, dot_duration, gpio_pin);
+                                    player.gpio_gap(dot_duration * 14, gpio_pin);
                                 }
                             } else {
                                 // Encode stdin as morse code:
@@ -136,16 +142,31 @@ fn main() {
                                 if sound {
                                     player.play(&line, dot_duration, tone_freq);
                                     player.play_gap(dot_duration * 14);
+                                } else if gpio {
+                                    player.gpio(&line, dot_duration, gpio_pin);
+                                    player.gpio_gap(dot_duration * 14, gpio_pin);
                                 }
                             }
                         } else if *morse {
                             // stdin is already morse encoded:
-                            player.play_morse(&line, dot_duration, tone_freq);
-                            player.play_gap(dot_duration * 14);
+                            if gpio {
+                                player.gpio_morse(&line, dot_duration, gpio_pin);
+                                player.gpio_gap(dot_duration * 14, gpio_pin);
+                            } else {
+                                // Sound is the default:
+                                player.play_morse(&line, dot_duration, tone_freq);
+                                player.play_gap(dot_duration * 14);
+                            }
                         } else {
                             // Convert stdin into morse and play it:
-                            player.play(&line, dot_duration, tone_freq);
-                            player.play_gap(dot_duration * 14);
+                            if gpio {
+                                player.gpio(&line, dot_duration, gpio_pin);
+                                player.gpio_gap(dot_duration * 14, gpio_pin);
+                            } else {
+                                // Sound is the default:
+                                player.play(&line, dot_duration, tone_freq);
+                                player.play_gap(dot_duration * 14);
+                            }
                         }
                     }
                     Err(e) => eprintln!("Error reading line: {}", e),
@@ -153,7 +174,7 @@ fn main() {
             }
             0
         }
-        Some(("listen", sub_matches)) => {
+        Some(("receive", sub_matches)) => {
             //
             let morse = sub_matches
                 .get_one::<bool>("morse")

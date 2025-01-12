@@ -7,7 +7,7 @@ On Fedora:
 ```
 sudo dnf install -y @development-tools @development-libs git openssh \
                     alsa-lib-devel pipewire-devel pipewire-utils \
-                    clang-devel mingw64-gcc
+                    clang-devel mingw64-gcc zig
 ```
 
 On Debian / Ubuntu:
@@ -16,7 +16,7 @@ On Debian / Ubuntu:
 sudo apt update && \
 sudo apt install -y build-essential git ssh libasound2-dev \
                     libpipewire-0.3-dev pipewire-bin libclang-dev \
-                    mingw-w64-x86-64-dev pkg-config curl
+                    mingw-w64-x86-64-dev pkg-config curl zig
 ```
 
 ## Install rust and cargo

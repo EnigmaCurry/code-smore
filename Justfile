@@ -18,6 +18,7 @@ deps:
     cargo install --locked git-cliff
     cargo install --locked cargo-llvm-cov
     cargo install --locked cargo-license
+    cargo install --locked cargo-zigbuild
     @echo
     @echo "All dependencies have been installed."
     @echo
@@ -31,6 +32,7 @@ bin-deps:
     cargo binstall --no-confirm git-cliff
     cargo binstall --no-confirm cargo-llvm-cov
     cargo binstall --no-confirm cargo-about
+    cargo binstall --no-confirm cargo-zigbuild
 
 # Build and run binary + args
 [no-cd]
@@ -45,6 +47,12 @@ build *args: build-license
 build-windows *args: build-license
     rustup target add x86_64-pc-windows-gnu
     RUSTFLAGS="-D warnings" cargo build --target x86_64-pc-windows-gnu {{args}}
+
+
+# Build for Linux ARM64
+build-aarch64 *args: build-license
+    rustup target add aarch64-unknown-linux-gnu
+    cargo zigbuild --no-default-features --features gpio --target aarch64-unknown-linux-gnu --release
 
 # Build continuously on file change
 build-watch *args:
@@ -132,3 +140,6 @@ clean-profile:
 
 build-license:
 	@bash -c "source funcs.sh && build_license"
+
+copy-pi: build-aarch64
+    scp target/aarch64-unknown-linux-gnu/release/code-smore streamdeck:
