@@ -58,12 +58,13 @@ jobs:
     - name: Install other dependencies listed in Justfile (bin-deps)
       run: just bin-deps
 
-    - name: Build
-      run: just build --release
+    # - name: Build
+    #   run: just build --release
 
-    - name: Run tests
-      run: just test --release
+    # - name: Run tests
+    #   run: just test --release
 
+    # Build, Test, and Coverage:
     - name: Run coverage report
       run: just test-coverage --release && ls -lha ./target/llvm-cov/html
 

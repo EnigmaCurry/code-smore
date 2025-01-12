@@ -5,6 +5,7 @@ use crate::message::Message;
 #[allow(unused_imports)]
 use crate::morse::text_to_morse;
 #[cfg(target_os = "linux")]
+#[cfg(feature = "audio")]
 use crate::pipewire::spa::pod::Pod;
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -15,10 +16,13 @@ use chrono::Local;
 #[allow(unused_imports)]
 use morse_codec::decoder::Decoder;
 #[cfg(target_os = "linux")]
+#[cfg(feature = "audio")]
 use pipewire as pw;
 #[cfg(target_os = "linux")]
+#[cfg(feature = "audio")]
 use pw::properties::properties;
 #[cfg(target_os = "linux")]
+#[cfg(feature = "audio")]
 use pw::{context::Context, main_loop::MainLoop, spa};
 #[allow(unused_imports)]
 use regex::Regex;
@@ -29,15 +33,25 @@ use std::time::Instant;
 
 #[cfg(target_os = "linux")]
 struct UserData {
+    #[cfg(feature = "audio")]
     format: spa::param::audio::AudioInfoRaw,
     filter: Option<BandpassFilter>,
     message_log: Vec<Message>,
 }
 
 #[cfg(target_os = "windows")]
-pub fn ensure_pipewire() {}
+pub fn ensure_pipewire() {
+    error!("Pipewire not enabled on windows");
+}
 
 #[cfg(target_os = "linux")]
+#[cfg(not(feature = "audio"))]
+pub fn ensure_pipewire() {
+    error!("'audio' feature is disabled in the Cargo build. Program cannot play audio.");
+}
+
+#[cfg(target_os = "linux")]
+#[cfg(feature = "audio")]
 pub fn ensure_pipewire() {
     let service_status = Command::new("systemctl")
         .args(["--user", "is-active", "pipewire"])
@@ -74,10 +88,25 @@ pub fn listen(
     _dot_duration: u32,
     _output_morse: bool,
 ) -> Result<(), std::io::Error> {
+    error!("listen feature not implemented on windows");
     return Ok(());
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(not(feature = "audio"))]
+pub fn listen(
+    _tone_freq: f32,
+    _bandwidth: f32,
+    _threshold: f32,
+    _dot_duration: u32,
+    _output_morse: bool,
+) -> Result<(), std::io::Error> {
+    error!("'audio' feature is disabled in the Cargo build. Program cannot play audio.");
+    return Ok(());
+}
+
+#[cfg(target_os = "linux")]
+#[cfg(feature = "audio")]
 pub fn listen(
     tone_freq: f32,
     bandwidth: f32,
