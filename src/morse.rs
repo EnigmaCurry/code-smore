@@ -263,7 +263,6 @@ impl MorsePlayer {
 
         #[cfg(not(feature = "audio"))]
         {
-            error!("'audio' feature is disabled in this Cargo build. Program cannot play audio.");
             Self {}
         }
     }
