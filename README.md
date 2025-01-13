@@ -100,7 +100,7 @@ The quiz supports these optional named arguments:
       --text                     Output text (cheat)
 ```
 
-## Send and encode from stdin
+## Send morse code from text stdin
 
 You can send text to have it encoded into morse code:
 
@@ -141,19 +141,31 @@ Encode text and playback as separate steps in a pipeline, playback at 10WPM:
 $ echo "Hello World" | code-smore send --text | code-smore send --morse --wpm 10
 ```
 
-## Receive and decode audio
+To encode plain text and send it as morse code to GPIO pin 4 (no sound):
 
-> **Note:** This feature is supported on Linux pipewire enabled systems only.
+```
+code-smore send --gpio 4 --wpm 15
+```
 
-code-smore can receive to any other programs running on your computer
-and can decode morse code audio from them.
+## Receive morse code from sound
+
+> **Note:** Decoding from sound is supported on Linux pipewire enabled
+> systems only. It is an optional compile time feature and it is
+> enabled by default (for Linux builds only).
+
+code-smore can receive morse code from any sound program playing on
+your computer and it will decode morse code from them. (This is a work
+in progress and may only works with ideal conditions.)
 
 ```
 code-smore receive --wpm 20
 ```
 
 code-smore will listen to the monitor of your default sound device in
-pipewire, so it should hear the same thing that you hear. Use the
+pipewire, so it should hear the same thing that you hear (You may also
+manually connect code-smore to any single application by using a
+pipewire patchbay tool like
+[helvum](https://gitlab.freedesktop.org/pipewire/helvum)). Use the
 `--wpm` argument to specify the expected (ballpark) rate of
 transmission.
 
@@ -166,9 +178,24 @@ interference. If you have any other sound playing in the background,
 it will negatively affect the signal copy. Filtering signals has not
 been implemented yet.
 
+## Receive morse code from GPIO
+
+> **Note:** The 'gpio' crate feature is enabled by default, but it
+> requires special hardware normally only found in embedded systems
+> (e.g., Raspberry Pi).
+
+code-smore can also receive morse code directly from GPIO. This is
+more reliable than decoding from audio because the signal is digital.
+
+```
+# This example receives morse signal on GPIO pin #17
+code-smore receive --gpio 17
+```
+
 ## Tab completion
 
-To install tab completion support, put this in your `~/.bashrc` (assuming you use Bash):
+code-smore has optional tab completion support. Put this in your
+`~/.bashrc` (assuming you use Bash):
 
 ```
 ### Bash completion for code-smore (Put this in ~/.bashrc)
