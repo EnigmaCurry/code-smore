@@ -147,6 +147,11 @@ To encode plain text and send it as morse code to GPIO pin 4 (no sound):
 code-smore send --gpio 4 --wpm 15
 ```
 
+> **Note:** This will set the the pin high when activated, and low
+> when idle. If your radio's key input is a simple switch you cannot
+> use this pin directly, you will need to use a transistor to complete
+> the circuit and control it with the pin.
+
 ## Receive morse code from sound
 
 > **Note:** Decoding from sound is supported on Linux pipewire enabled
@@ -191,6 +196,12 @@ more reliable than decoding from audio because the signal is digital.
 # This example receives morse signal on GPIO pin #17
 code-smore receive --gpio 17
 ```
+
+> **Note:** The receiving pin is normally high for idle, and low for
+> activation. This is the opposite voltage logic of the input pin. To
+> read the key input, you will need to use a pull-up resistor on the
+> GPIO pin (this could also be done in software if the device has a
+> pull-up resistor builtin, but this is not implemented yet.)
 
 ## Tab completion
 
