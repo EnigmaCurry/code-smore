@@ -4,6 +4,7 @@ mod cli;
 mod credits;
 mod fecr_quiz;
 mod filter;
+mod gpio;
 mod message;
 mod morse;
 mod pipewire;
@@ -179,40 +180,47 @@ fn main() {
             let morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
-            let device = sub_matches
-                .get_one::<String>("device")
-                .map(|s| s.to_string());
-            let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
-            let threshold = sub_matches
-                .get_one::<f32>("threshold")
-                .copied()
-                .unwrap_or(0.3);
-            let bandwidth = sub_matches
-                .get_one::<f32>("bandwidth")
-                .copied()
-                .unwrap_or(200.0);
-            match (&device, &file) {
-                (None, Some(_file)) => {
-                    error!("TODO. Audio file input is not supported yet.");
-                    std::process::exit(1);
-                }
-                (Some(_device), None) => {
-                    error!("TODO. Setting the input device name is not supported yet. Leave this setting unset to use the default device.");
-                    std::process::exit(1);
-                }
-                (Some(_device), Some(_file)) => {
-                    error!("Cannot specify --device and --file simultaneousy.");
-                    std::process::exit(1);
-                }
-                _ => {}
-            }
-            if cfg!(target_os = "linux") {
-                ensure_pipewire();
-                pipewire::listen(tone_freq, bandwidth, threshold, dot_duration, *morse)
-                    .expect("pipewire::listen() failed");
+            if gpio {
+                // Receive from GPIO
+                gpio::gpio_receive(dot_duration, gpio_pin, *morse)
+                    .expect("Unhandled SIGINT or other fault");
             } else {
-                error!("Sorry, the listen feature is only supported on Linux right now.");
-                std::process::exit(1);
+                // Receive from audio device
+                let device = sub_matches
+                    .get_one::<String>("device")
+                    .map(|s| s.to_string());
+                let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
+                let threshold = sub_matches
+                    .get_one::<f32>("threshold")
+                    .copied()
+                    .unwrap_or(0.3);
+                let bandwidth = sub_matches
+                    .get_one::<f32>("bandwidth")
+                    .copied()
+                    .unwrap_or(200.0);
+                match (&device, &file) {
+                    (None, Some(_file)) => {
+                        error!("TODO. Audio file input is not supported yet.");
+                        std::process::exit(1);
+                    }
+                    (Some(_device), None) => {
+                        error!("TODO. Setting the input device name is not supported yet. Leave this setting unset to use the default device.");
+                        std::process::exit(1);
+                    }
+                    (Some(_device), Some(_file)) => {
+                        error!("Cannot specify --device and --file simultaneousy.");
+                        std::process::exit(1);
+                    }
+                    _ => {}
+                }
+                if cfg!(target_os = "linux") {
+                    ensure_pipewire();
+                    pipewire::listen(tone_freq, bandwidth, threshold, dot_duration, *morse)
+                        .expect("pipewire::listen() failed");
+                } else {
+                    error!("Sorry, the listen feature is only supported on Linux right now.");
+                    std::process::exit(1);
+                }
             }
             0
         }

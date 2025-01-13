@@ -219,8 +219,8 @@ fn play_morse_code(tones: Vec<(f32, u32)>, sink: &Sink) {
 
 #[cfg(feature = "gpio")]
 fn gpio_morse_code(tones: Vec<(f32, u32)>, pin_number: u8) {
-    let gpio = rppal::gpio::Gpio::new().expect("Failed to access GPIO");
-    let mut pin = gpio
+    let mut pin = rppal::gpio::Gpio::new()
+        .expect("Failed to access GPIO")
         .get(pin_number)
         .expect("Failed to get GPIO pin")
         .into_output();
