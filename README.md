@@ -4,9 +4,7 @@
 )](https://crates.io/crates/code-smore)
 [![Coverage](https://img.shields.io/badge/Coverage-Report-purple)](https://EnigmaCurry.github.io/code-smore/coverage/master/)
 
-This is a morse code practice tool.
-
-Read the blog article introduction by [WA7PGE](https://wa7pge.com/home/operating_modes/cw/instant_character_recognition).
+This is a morse code utility and practice tool.
 
 ## Install
 
@@ -16,25 +14,6 @@ Or install via cargo ([crates.io/crates/code-smore](https://crates.io/crates/cod
 
 ```
 $ cargo install code-smore
-```
-
-## Emable optional features
-
-This crate offers the following optional Cargo feature flags:
-
- * `audio` (enabled by default on all platforms) this allows playing
-   morse code audio to your sound device.
- * `pipewire` (enabled by default on Linux only) this allows receiving
-   morse code audio from pipewire (can listen to any device or
-   program).
- * `gpio` (enabled by default on Linux only) this allows receiving
-   morse code signal from a GPIO logic pin (e.g., on Raspberry Pi)
-
-If you are compiling code-smore yourself, you can add only the feature
-flags you want:
-
-```
-just build --no-default-features --features audio,gpio,pipewire
 ```
 
 ## Usage
@@ -78,6 +57,8 @@ $ code-smore test-sound
 You should hear an example 42s transmission at 20 WPM.
 
 ## Fast Enough Character Recognition quiz
+
+Read the blog article introduction by [WA7PGE](https://wa7pge.com/home/operating_modes/cw/instant_character_recognition).
 
 The FECR quiz will examine your skills at recognizing single
 characters from the given character set (the alphanumeric set is used
@@ -221,6 +202,25 @@ code-smore receive --gpio 17
 > read the key input, you will need to use a pull-up resistor on the
 > GPIO pin (this could also be done in software if the device has a
 > pull-up resistor builtin, but this is not implemented yet.)
+
+## Enable optional features
+
+This crate offers the following optional Cargo feature flags:
+
+ * `audio` (enabled by default on all platforms) this allows playing
+   morse code audio to your sound device.
+ * `pipewire` (enabled by default on Linux only) this allows receiving
+   morse code audio from pipewire (can listen to any device or
+   program).
+ * `gpio` (enabled by default on Linux only) this allows receiving
+   morse code signal from a GPIO logic pin (e.g., on Raspberry Pi)
+
+If you are compiling code-smore yourself, you can add only the feature
+flags you want:
+
+```
+just build --no-default-features --features audio,gpio,pipewire
+```
 
 ## Tab completion
 
