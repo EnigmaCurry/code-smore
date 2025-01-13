@@ -198,7 +198,7 @@ code-smore receive --gpio 17
 ```
 
 > **Note:** The receiving pin is normally high for idle, and low for
-> activation. This is the opposite voltage logic of the input pin. To
+> activation. This is the opposite voltage logic of the output pin. To
 > read the key input, you will need to use a pull-up resistor on the
 > GPIO pin (this could also be done in software if the device has a
 > pull-up resistor builtin, but this is not implemented yet.)
