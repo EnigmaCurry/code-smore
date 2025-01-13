@@ -48,7 +48,6 @@ build-windows *args: build-license
     rustup target add x86_64-pc-windows-gnu
     RUSTFLAGS="-D warnings" cargo build --target x86_64-pc-windows-gnu {{args}}
 
-
 # Build for Linux ARM64
 build-aarch64 *args: build-license
     rustup target add aarch64-unknown-linux-gnu

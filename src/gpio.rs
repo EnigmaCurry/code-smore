@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use crate::morse::text_to_morse;
 use crate::prelude::*;
 use morse_codec::decoder::{Decoder, MorseDecoder};
@@ -6,6 +7,7 @@ use rppal;
 use std::time::Duration;
 use std::time::Instant;
 
+#[allow(dead_code)]
 fn get_decoder(dot_duration: u32) -> MorseDecoder<9999> {
     Decoder::<9999>::new()
         .with_reference_short_ms(dot_duration as u16)
@@ -87,9 +89,12 @@ pub fn gpio_receive(
 
 #[cfg(not(feature = "gpio"))]
 pub fn gpio_receive(
-    dot_duration: u32,
-    pin_number: u8,
-    output_morse: bool,
+    _dot_duration: u32,
+    _pin_number: u8,
+    _output_morse: bool,
 ) -> Result<(), std::io::Error> {
-    return Err("The GPIO feature is not enabled in this crate build");
+    return Err(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        "The GPIO feature is not enabled in this crate build",
+    ));
 }

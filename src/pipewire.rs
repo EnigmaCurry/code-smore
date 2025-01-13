@@ -5,7 +5,7 @@ use crate::message::Message;
 #[allow(unused_imports)]
 use crate::morse::text_to_morse;
 #[cfg(target_os = "linux")]
-#[cfg(feature = "audio")]
+#[cfg(feature = "pipewire")]
 use crate::pipewire::spa::pod::Pod;
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -16,13 +16,13 @@ use chrono::Local;
 #[allow(unused_imports)]
 use morse_codec::decoder::Decoder;
 #[cfg(target_os = "linux")]
-#[cfg(feature = "audio")]
+#[cfg(feature = "pipewire")]
 use pipewire as pw;
 #[cfg(target_os = "linux")]
-#[cfg(feature = "audio")]
+#[cfg(feature = "pipewire")]
 use pw::properties::properties;
 #[cfg(target_os = "linux")]
-#[cfg(feature = "audio")]
+#[cfg(feature = "pipewire")]
 use pw::{context::Context, main_loop::MainLoop, spa};
 #[allow(unused_imports)]
 use regex::Regex;
@@ -32,8 +32,9 @@ use std::process::Command;
 use std::time::Instant;
 
 #[cfg(target_os = "linux")]
+#[cfg(feature = "pipewire")]
 struct UserData {
-    #[cfg(feature = "audio")]
+    #[cfg(feature = "pipewire")]
     format: spa::param::audio::AudioInfoRaw,
     filter: Option<BandpassFilter>,
     message_log: Vec<Message>,
@@ -45,13 +46,13 @@ pub fn ensure_pipewire() {
 }
 
 #[cfg(target_os = "linux")]
-#[cfg(not(feature = "audio"))]
+#[cfg(not(feature = "pipewire"))]
 pub fn ensure_pipewire() {
-    error!("'audio' feature is disabled in the Cargo build. Program cannot play audio.");
+    error!("'pipewire' feature is disabled in the Cargo build. Program cannot receive audio.");
 }
 
 #[cfg(target_os = "linux")]
-#[cfg(feature = "audio")]
+#[cfg(feature = "pipewire")]
 pub fn ensure_pipewire() {
     let service_status = Command::new("systemctl")
         .args(["--user", "is-active", "pipewire"])
@@ -93,7 +94,7 @@ pub fn listen(
 }
 
 #[cfg(target_os = "linux")]
-#[cfg(not(feature = "audio"))]
+#[cfg(not(feature = "pipewire"))]
 pub fn listen(
     _tone_freq: f32,
     _bandwidth: f32,
@@ -101,12 +102,12 @@ pub fn listen(
     _dot_duration: u32,
     _output_morse: bool,
 ) -> Result<(), std::io::Error> {
-    error!("'audio' feature is disabled in the Cargo build. Program cannot play audio.");
+    error!("'pipewire' feature is disabled in the Cargo build. Program cannot receive audio.");
     return Ok(());
 }
 
 #[cfg(target_os = "linux")]
-#[cfg(feature = "audio")]
+#[cfg(feature = "pipewire")]
 pub fn listen(
     tone_freq: f32,
     bandwidth: f32,

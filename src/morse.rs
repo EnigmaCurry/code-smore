@@ -1,4 +1,4 @@
-#[allow(unused_imports)]
+#![allow(unused_imports)]
 use crate::prelude::*;
 #[cfg(feature = "audio")]
 use rodio::{OutputStream, Sink, Source};
@@ -11,6 +11,7 @@ use std::thread::{self, sleep};
 use std::time::Duration;
 
 /// Custom audio source for generating tones
+#[allow(dead_code)]
 struct Tone {
     freq: f32,        // Frequency of the tone in Hz
     duration: u32,    // Duration of the tone in milliseconds
@@ -167,6 +168,7 @@ pub fn text_to_morse(text: &str) -> String {
         .join(" / ") // word gap
 }
 
+#[allow(dead_code)]
 fn encode_morse(text: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)> {
     let morse_code = text_to_morse(text);
     let morse_code = regex::Regex::new(r"\s{3,}") // Match three or more spaces
@@ -181,6 +183,7 @@ fn encode_morse(text: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)
     morse_to_tones(&morse_code, dot_duration, tone_freq)
 }
 
+#[allow(dead_code)]
 fn morse_to_tones(morse_code: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f32, u32)> {
     let dash_duration = dot_duration * 3; // Duration of a dash
     let char_gap_duration = dot_duration * 3; // Gap between characters
@@ -335,12 +338,12 @@ impl MorsePlayer {
     }
 
     #[cfg(not(feature = "gpio"))]
-    pub fn gpio_morse(&self, _message: &str, _dot_duration: u32) {
+    pub fn gpio_morse(&self, _message: &str, _dot_duration: u32, _gpio_pin: u8) {
         error!("Error: GPIO feature is disabled. Cannot play Morse code via GPIO.");
     }
 
     #[cfg(not(feature = "gpio"))]
-    pub fn gpio(&self, _message: &str, _dot_duration: u32) {
+    pub fn gpio(&self, _message: &str, _dot_duration: u32, _gpio_pin: u8) {
         error!("Error: GPIO feature is disabled. Cannot perform GPIO operations.");
     }
 
@@ -356,7 +359,7 @@ impl MorsePlayer {
     }
 
     #[cfg(not(feature = "gpio"))]
-    pub fn gpio_gap(&self, _dot_duration: u32) {
+    pub fn gpio_gap(&self, _dot_duration: u32, _gpio_pin: u8) {
         error!("Error: GPIO feature is disabled. Cannot perform GPIO gap.");
     }
 }

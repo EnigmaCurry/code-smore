@@ -18,6 +18,25 @@ Or install via cargo ([crates.io/crates/code-smore](https://crates.io/crates/cod
 $ cargo install code-smore
 ```
 
+## Emable optional features
+
+This crate offers the following optional Cargo feature flags:
+
+ * `audio` (enabled by default on all platforms) this allows playing
+   morse code audio to your sound device.
+ * `pipewire` (enabled by default on Linux only) this allows receiving
+   morse code audio from pipewire (can listen to any device or
+   program).
+ * `gpio` (enabled by default on Linux only) this allows receiving
+   morse code signal from a GPIO logic pin (e.g., on Raspberry Pi)
+
+If you are compiling code-smore yourself, you can add only the feature
+flags you want:
+
+```
+just build --no-default-features --features audio,gpio,pipewire
+```
+
 ## Usage
 
 `code-smore` is a CLI program to run in your terminal (command window):
