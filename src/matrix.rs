@@ -10,7 +10,7 @@ use matrix_sdk::ruma::{OwnedEventId, OwnedRoomId, RoomId};
 #[cfg(feature = "matrix")]
 use matrix_sdk::RoomState;
 #[cfg(feature = "matrix")]
-use matrix_sdk::{config::SyncSettings, room::Room, Client};
+use matrix_sdk::{config::SyncSettings, room::edit::EditedContent, room::Room, Client};
 use std::env;
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -83,7 +83,7 @@ async fn bridge_stdout(
     let stdout = child.stdout.take().expect("Failed to capture stdout");
     let mut reader = BufReader::new(stdout);
     let mut buf = String::new();
-    let mut receiving_message_event_id: Option<OwnedEventId> = None;
+    let mut interim_message_event_id: Option<OwnedEventId> = None;
 
     loop {
         buf.clear();
@@ -91,8 +91,10 @@ async fn bridge_stdout(
         if bytes_read == 0 {
             break; // End of stream
         }
+
         info!("line: {buf:?}");
-        if buf == "\n".to_string() && receiving_message_event_id.is_none() {
+
+        if buf == "\n".to_string() && interim_message_event_id.is_none() {
             buf.clear();
             // Send the "Receiving Message ...." notification
             if let Some(room) = client.get_room(&room_id) {
@@ -102,7 +104,7 @@ async fn bridge_stdout(
                     ))
                     .await
                 {
-                    Ok(response) => receiving_message_event_id = Some(response.event_id),
+                    Ok(response) => interim_message_event_id = Some(response.event_id),
                     Err(err) => error!("Failed to send interim message: {}", err),
                 }
             } else {
@@ -113,12 +115,24 @@ async fn bridge_stdout(
             info!("Received from code-smore: {}", buf);
 
             if let Some(room) = client.get_room(&room_id) {
-                if let Err(err) = room.send(RoomMessageEventContent::text_plain(&buf)).await {
-                    error!("Failed to send message to room: {}", err);
-                } else if let Some(event_id) = receiving_message_event_id.take() {
-                    // Delete the "Receiving Message ...." notification
-                    if let Err(err) = room.redact(&event_id, None, None).await {
-                        error!("Failed to redact interim message: {}", err);
+                if let Some(event_id) = &interim_message_event_id {
+                    // Create an edit event with the new content
+                    let edited_content = EditedContent::RoomMessage(
+                        RoomMessageEventContent::text_plain(&buf).into(),
+                    );
+                    match room.make_edit_event(event_id, edited_content).await {
+                        Ok(edited_message_content) => {
+                            if let Err(err) = room.send(edited_message_content).await {
+                                error!("Failed to send edited message to room: {}", err);
+                            }
+                        }
+                        Err(err) => error!("Failed to create edit event: {}", err),
+                    }
+                    interim_message_event_id = None;
+                } else {
+                    // If there's no interim message, send a new one
+                    if let Err(err) = room.send(RoomMessageEventContent::text_plain(&buf)).await {
+                        error!("Failed to send message to room: {}", err);
                     }
                 }
             } else {
@@ -129,7 +143,6 @@ async fn bridge_stdout(
 
     Ok(())
 }
-
 #[cfg(feature = "matrix")]
 #[allow(dead_code)]
 pub async fn main() -> anyhow::Result<()> {
