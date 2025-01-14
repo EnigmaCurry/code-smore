@@ -44,8 +44,8 @@ pub fn gpio_receive(
         // Handle state changes
         if current_state != last_signal_state {
             if !message_pending && buffer_messages {
-                // zero-width space to mark start of buffered message:
-                print!("\u{200B}");
+                println!(""); // blank line marks start of new message
+                std::io::Write::flush(&mut std::io::stdout())?;
             }
             let duration = last_signal_change.elapsed().as_millis();
             debug!(

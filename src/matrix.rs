@@ -91,8 +91,9 @@ async fn bridge_stdout(
         if bytes_read == 0 {
             break; // End of stream
         }
-
-        if buf.contains('\u{200B}') && receiving_message_event_id.is_none() {
+        info!("line: {buf:?}");
+        if buf == "\n".to_string() && receiving_message_event_id.is_none() {
+            buf.clear();
             // Send the "Receiving Message ...." notification
             if let Some(room) = client.get_room(&room_id) {
                 match room
@@ -107,9 +108,7 @@ async fn bridge_stdout(
             } else {
                 error!("Failed to find joined room with ID: {}", room_id);
             }
-        }
-
-        if buf.ends_with('\n') {
+        } else if buf.ends_with('\n') {
             // Full line received, process normally
             info!("Received from code-smore: {}", buf);
 
