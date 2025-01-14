@@ -213,7 +213,7 @@ pub fn app() -> Command {
                 )
                 .arg(Arg::new("buffer-messages")
                      .short('b')
-                     .long("buffer-messages")
+                     .long("buffered")
                      .help("Buffer complete messages before printing them.")
                      .action(clap::ArgAction::SetTrue))
                 ,

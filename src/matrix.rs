@@ -6,7 +6,7 @@ use matrix_sdk::ruma::events::room::message::{
     MessageType, OriginalSyncRoomMessageEvent, RoomMessageEventContent,
 };
 #[cfg(feature = "matrix")]
-use matrix_sdk::ruma::{OwnedRoomId, RoomId};
+use matrix_sdk::ruma::{OwnedEventId, OwnedRoomId, RoomId};
 #[cfg(feature = "matrix")]
 use matrix_sdk::RoomState;
 #[cfg(feature = "matrix")]
@@ -76,28 +76,57 @@ async fn bridge_stdout(
         .arg("receive")
         .arg("--gpio")
         .arg("17")
-        .arg("--buffer-messages")
+        .arg("--buffered")
         .stdout(Stdio::piped())
         .spawn()?;
 
     let stdout = child.stdout.take().expect("Failed to capture stdout");
-    let reader = BufReader::new(stdout);
+    let mut reader = BufReader::new(stdout);
+    let mut buf = String::new();
+    let mut receiving_message_event_id: Option<OwnedEventId> = None;
 
-    tokio::spawn(async move {
-        let mut lines = reader.lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            info!("Received from code-smore: {}", line);
+    loop {
+        buf.clear();
+        let bytes_read = reader.read_line(&mut buf).await?;
+        if bytes_read == 0 {
+            break; // End of stream
+        }
+
+        if buf.contains('\u{200B}') && receiving_message_event_id.is_none() {
+            // Send the "Receiving Message ...." notification
             if let Some(room) = client.get_room(&room_id) {
-                if let
-                Err(err) = room.send(
-                matrix_sdk::ruma::events::room::message::RoomMessageEventContent::text_plain(&line)
-                ) .await { error!("Failed to send message to
-                room: {}", err); }
+                match room
+                    .send(RoomMessageEventContent::text_plain(
+                        "Receiving Message ....",
+                    ))
+                    .await
+                {
+                    Ok(response) => receiving_message_event_id = Some(response.event_id),
+                    Err(err) => error!("Failed to send interim message: {}", err),
+                }
             } else {
                 error!("Failed to find joined room with ID: {}", room_id);
             }
         }
-    });
+
+        if buf.ends_with('\n') {
+            // Full line received, process normally
+            info!("Received from code-smore: {}", buf);
+
+            if let Some(room) = client.get_room(&room_id) {
+                if let Err(err) = room.send(RoomMessageEventContent::text_plain(&buf)).await {
+                    error!("Failed to send message to room: {}", err);
+                } else if let Some(event_id) = receiving_message_event_id.take() {
+                    // Delete the "Receiving Message ...." notification
+                    if let Err(err) = room.redact(&event_id, None, None).await {
+                        error!("Failed to redact interim message: {}", err);
+                    }
+                }
+            } else {
+                error!("Failed to find joined room with ID: {}", room_id);
+            }
+        }
+    }
 
     Ok(())
 }

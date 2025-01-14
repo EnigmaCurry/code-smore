@@ -43,6 +43,10 @@ pub fn gpio_receive(
 
         // Handle state changes
         if current_state != last_signal_state {
+            if !message_pending && buffer_messages {
+                // zero-width space to mark start of buffered message:
+                print!("\u{200B}");
+            }
             let duration = last_signal_change.elapsed().as_millis();
             debug!(
                 "State changed: {:?} -> {:?}, Duration: {} ms",
