@@ -214,6 +214,8 @@ This crate offers the following optional Cargo feature flags:
    program).
  * `gpio` (enabled by default on Linux only) this allows receiving
    morse code signal from a GPIO logic pin (e.g., on Raspberry Pi)
+ * `matrix` (enabled by default) this enables bridging between a
+   Matrix channel and a morse code link.
 
 If you are compiling code-smore yourself, you can add only the feature
 flags you want:

@@ -1,6 +1,6 @@
 [package]
 name = "code-smore"
-description = "A morse code practice tool"
+description = "A CLI morse code utility and practice tool"
 version = "0.1.33"
 edition = "2021"
 repository = "https://github.com/EnigmaCurry/code-smore"
@@ -36,12 +36,17 @@ tabled = "0.17.0"
 term_size = "0.3.2"
 textwrap = "0.16.1"
 rodio = {version = "0.20.1", optional = true }
+matrix-sdk = {version = "0.9.0", optional = true}
+strum = { version = "0.26.3", features = ["derive", "strum_macros"] }
+tokio = { version = "1.43.0", features = ["full"] }
+anyhow = "1.0.95"
 
 [features]
 audio = ["rodio"]
 pipewire = ["dep:pipewire"]
 gpio = ["rppal"]
 default = ["audio", "gpio"]
+matrix = ["matrix-sdk"]
 
 [target.'cfg(target_os = "linux")'.dependencies]
 pipewire = { version = "0.8.0", optional = true }
@@ -53,3 +58,9 @@ shell-words = "1.1.0"
 clap = "4.5.17"
 clap_complete = "4.5.29"
 dirs = "5.0.1"
+
+[workspace.metadata.cross.target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update && apt-get -y install libssl-dev:$CROSS_DEB_ARCH libasound2-dev:${CROSS_DEB_ARCH} libsqlite3-dev:${CROSS_DEB_ARCH}"
+]

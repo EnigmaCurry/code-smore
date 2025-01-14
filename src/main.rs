@@ -5,6 +5,7 @@ mod credits;
 mod fecr_quiz;
 mod filter;
 mod gpio;
+mod matrix;
 mod message;
 mod morse;
 mod pipewire;
@@ -15,12 +16,13 @@ use is_terminal::IsTerminal;
 use prelude::*;
 use std::io::BufRead;
 use std::u8;
+use tokio::runtime::Runtime;
 
 use crate::pipewire::ensure_pipewire;
 
 use crate::{credits::print_credits, morse::text_to_morse};
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let mut cmd = cli::app();
     let matches = cmd.clone().get_matches();
 
@@ -44,7 +46,7 @@ fn main() {
     if matches.subcommand_name().is_none() {
         cmd.print_help().unwrap();
         println!();
-        return;
+        return Ok(());
     }
 
     // Global arguments
@@ -180,9 +182,12 @@ fn main() {
             let morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
+            let buffer_messages = sub_matches
+                .get_one::<bool>("buffer-messages")
+                .expect("Missing --buffer-messages default");
             if gpio {
                 // Receive from GPIO
-                gpio::gpio_receive(dot_duration, gpio_pin, *morse)
+                gpio::gpio_receive(dot_duration, gpio_pin, *morse, *buffer_messages)
                     .expect("Unhandled SIGINT or other fault");
             } else {
                 // Receive from audio device
@@ -221,6 +226,21 @@ fn main() {
                     error!("Sorry, the listen feature is only supported on Linux right now.");
                     std::process::exit(1);
                 }
+            }
+            0
+        }
+        Some(("bridge", sub_matches)) => {
+            if *sub_matches
+                .get_one::<bool>("matrix")
+                .expect("Invalid bridge --matrix default")
+            {
+                if cfg!(feature = "matrix") {
+                    let runtime = Runtime::new().expect("Invalid tokio runtime state");
+                    runtime.block_on(matrix::main())?
+                }
+            } else {
+                error!("you must specify a valid bridge protocol.");
+                std::process::exit(1);
             }
             0
         }

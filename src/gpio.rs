@@ -19,6 +19,7 @@ pub fn gpio_receive(
     dot_duration: u32,
     pin_number: u8,
     output_morse: bool,
+    buffer_messages: bool,
 ) -> Result<(), std::io::Error> {
     let pin = rppal::gpio::Gpio::new()
         .expect("Failed to access GPIO")
@@ -31,7 +32,10 @@ pub fn gpio_receive(
     let mut last_signal_state = !pin.is_low(); // Normally high logic
     let mut message_pending = false; // Tracks if there's a pending message to finalize
 
-    clear_screen();
+    if !buffer_messages {
+        clear_screen();
+    }
+
     info!("Receiving morse code from GPIO pin {pin_number} - Press Ctrl-C to stop.");
 
     loop {
@@ -52,7 +56,7 @@ pub fn gpio_receive(
 
             // Print the current message on the same line
             let message = decoder.message.as_str().trim().to_string();
-            if !message.is_empty() {
+            if !buffer_messages && !message.is_empty() {
                 if output_morse {
                     print!("\r\x1b[K{}", text_to_morse(&message));
                 } else {
@@ -70,13 +74,17 @@ pub fn gpio_receive(
             let message = decoder.message.as_str().trim().to_string();
             if !message.is_empty() {
                 debug!("Inactivity detected. Final message: {:?}", message);
-                // Clear the current line before printing the final message
-                if output_morse {
-                    print!("\r\x1b[K{}", text_to_morse(&message));
+                if buffer_messages {
+                    println!("{message}");
                 } else {
-                    print!("\r\x1b[K{message}");
+                    // Clear the current line before printing the final message
+                    if output_morse {
+                        print!("\r\x1b[K{}", text_to_morse(&message));
+                    } else {
+                        print!("\r\x1b[K{message}");
+                    }
+                    println!(); // Move to the next line after the final message
                 }
-                println!(); // Move to the next line after the final message
             }
             message_pending = false; // Reset pending message flag
             decoder = get_decoder(dot_duration); // Reset decoder for a new message

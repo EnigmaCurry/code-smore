@@ -210,7 +210,25 @@ pub fn app() -> Command {
                         .long("device")
                         .help("Receive morse code from an audio device")
                         .conflicts_with("file"), // Ensures `--device` and `--file` are mutually exclusive
-                ),
+                )
+                .arg(Arg::new("buffer-messages")
+                     .short('b')
+                     .long("buffer-messages")
+                     .help("Buffer complete messages before printing them.")
+                     .action(clap::ArgAction::SetTrue))
+                ,
+        )
+        .subcommand(
+            Command::new("bridge")
+                .about(
+                    "Bridge morse code communication with with other networks."
+                )
+                .arg(
+                    Arg::new("matrix")
+                        .long("matrix").help("Bridge with a Matrix channel (requires env vars: MATRIX_HOMESERVER, MATRIX_USERNAME, MATRIX_PASSWORD, MATRIX_ROOM_ID)")
+                        .action(clap::ArgAction::SetTrue)
+                        .required(true)
+                )
         )
         .subcommand(
             Command::new("completions")
