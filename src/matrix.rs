@@ -18,7 +18,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
+use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
 #[derive(Debug, EnumString, EnumIter, Display)]
@@ -71,14 +71,21 @@ async fn bridge_stdout(
     client: Client,
     room_id: Arc<OwnedRoomId>,
     exe_path: PathBuf,
+    gpio_pin: Option<u8>,
 ) -> anyhow::Result<()> {
-    let mut child = Command::new(&exe_path)
-        .arg("receive")
-        .arg("--gpio")
-        .arg("17")
-        .arg("--buffered")
-        .stdout(Stdio::piped())
-        .spawn()?;
+    let mut child: Child;
+    if let Some(gpio_pin) = gpio_pin {
+        child = Command::new(&exe_path)
+            .arg("receive")
+            .arg("--gpio")
+            .arg(format!("{gpio_pin}"))
+            .arg("--buffered")
+            .stdout(Stdio::piped())
+            .spawn()?;
+    } else {
+        error!("Only GPIO bridging supported right now.");
+        std::process::exit(1);
+    }
 
     let stdout = child.stdout.take().expect("Failed to capture stdout");
     let mut reader = BufReader::new(stdout);
@@ -170,11 +177,13 @@ pub async fn main() -> anyhow::Result<()> {
 
     let process_lock = Arc::new(Mutex::new(()));
     let morse_enabled = Arc::new(AtomicBool::new(true));
+    let gpio_pin = 17;
 
     tokio::spawn(bridge_stdout(
         client.clone(),
         room_id.clone(),
         exe_path.clone(),
+        Some(gpio_pin),
     ));
 
     client.sync_once(SyncSettings::default()).await?;

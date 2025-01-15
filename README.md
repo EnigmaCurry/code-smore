@@ -203,6 +203,36 @@ code-smore receive --gpio 17
 > GPIO pin (this could also be done in software if the device has a
 > pull-up resistor builtin, but this is not implemented yet.)
 
+## Bridge to and from Matrix channel
+
+[Matrix](https://matrix.org) is a federated chat messaging platform.
+code-smore can bridge morse code communications (audio/gpio) to a text
+mode channel. Participants in the Matrix channel do not need to
+understand morse code, as the messages will be transcoded to/from
+plain text.
+
+ * You need to create a Matrix account for the code-smore bot to use.
+ * You need to create a dedicated channel for the bridge, and invite
+   the bot to it.
+   
+You need to set the following environment variables:
+
+ * `MATRIX_HOMESERVER` - e.g., `https://matrix.org`
+ * `MATRIX_USERNAME` - the bot username, e.g., `cw-hotline`
+ * `MATRIX_PASSWORD` - the bot password, e.g., `password`
+ * `MATRIX_ROOM_ID` - the Matrix room (channel) id, e.g.,
+   `!zTjAxxxxxxx:matrix.org`
+
+To find the Matrix room ID, go to the room settings, click `Advanced`
+and then find the `Internal room ID`.
+
+To start the bridge in GPIO mode, ensure you have set the above
+environment variables, then run:
+
+```
+code-smore bridge --matrix 
+```
+
 ## Enable optional features
 
 This crate offers the following optional Cargo feature flags:
