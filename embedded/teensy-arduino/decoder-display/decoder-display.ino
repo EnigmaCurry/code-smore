@@ -1,4 +1,4 @@
-// Three display GPIO morse decoder
+// A GPIO morse code decoder with three OLED displays.
 
 #include <SPI.h>
 #include <Wire.h>
@@ -8,7 +8,7 @@
 #include <TimerOne.h>
 #include <ctype.h> // toupper
 
-#define WPM 40 // Code Words Per Minute
+#define WPM 30 // Code Words Per Minute
 #define RX_PIN 2 // Receive morse code on GPIO pin RX_PIN
 #define TX_PIN 3 // Send morse code on GPIO pin TX_PIN
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -18,15 +18,15 @@
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 #define SERIAL_BAUD 9600
-#define MORSE_LED 33 // Morse code indicator
 
+// Have to put the displays on separate wire busses because they have the same unchangable address: 0x3c
 Adafruit_SSD1306 displayRight(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Adafruit_SSD1306 displayMiddle(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
 Adafruit_SSD1306 displayLeft(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire2, OLED_RESET);
 
 Lewis Morse;
 
-#define BUFFER_SIZE 91
+#define BUFFER_SIZE 82 // a bit smaller than 90 because of some bug that overflows the screen
 char buffer[BUFFER_SIZE] = ""; // Buffer to store received characters
 int bufferIndex = 0;           // Tracks the current position in the buffer
 unsigned long lastReceivedTime = 0; // Tracks the last time a character was received
@@ -35,8 +35,6 @@ bool screenCleared = false; // Tracks if the screen has been cleared due to time
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
-  pinMode(MORSE_LED, OUTPUT);
-  digitalWrite(MORSE_LED, LOW);
 
   Morse.begin(RX_PIN, TX_PIN, WPM, MORSE_INTERRUPT);
   Timer1.initialize(MORSE_INTERRUPT_FREQUENCY * 100);
@@ -68,24 +66,44 @@ void loop() {
 
   // Check if Morse data is available and store it in the buffer
   if (Morse.available()) {
-    int inByte = Morse.read();
+    int inByte = toUpperCase(Morse.read());
     Serial.write(inByte);
 
     // Reset the timeout tracking
     lastReceivedTime = currentTime;
     screenCleared = false; // New data, ensure screen updates
 
-    // Append character to buffer
-    if (bufferIndex < BUFFER_SIZE - 1) { // Ensure space for null terminator
-      buffer[bufferIndex++] = (char)inByte;
-      buffer[bufferIndex] = '\0'; // Null-terminate the string
-    } else {
-      // Clear the buffer if it exceeds the size
+    // Check for buffer overflow
+    if (bufferIndex >= BUFFER_SIZE - 1) {
+      // Find the start of the current word
+      int wordStart = bufferIndex - 1;
+      while (wordStart >= 0 && buffer[wordStart] != ' ') {
+        wordStart--;
+      }
+      wordStart++; // Move to the first character of the word
+
+      // Copy the word to a temporary buffer
+      char tempBuffer[BUFFER_SIZE] = "";
+      strncpy(tempBuffer, buffer + wordStart, bufferIndex - wordStart);
+      tempBuffer[bufferIndex - wordStart] = '\0'; // Null-terminate
+
+      // Clear the buffer and screen
       clearBuffer();
-      // Add the current character to the cleared buffer
-      buffer[bufferIndex++] = (char)inByte;
-      buffer[bufferIndex] = '\0';
+      displayRight.clearDisplay();
+      displayLeft.clearDisplay();
+      displayMiddle.clearDisplay();
+      displayRight.display();
+      displayMiddle.display();
+      displayLeft.display();
+
+      // Copy the word into the cleared buffer
+      strcpy(buffer, tempBuffer);
+      bufferIndex = strlen(tempBuffer); // Update the buffer index
     }
+
+    // Append the new character to the buffer
+    buffer[bufferIndex++] = (char)inByte;
+    buffer[bufferIndex] = '\0'; // Null-terminate the string
   }
 
   // Check if timeout has occurred
@@ -114,7 +132,7 @@ void loop() {
     Morse.write(inByte);
   }
 
-  delay(10);
+  //delay(10);
 }
 
 // Interrupt function to call the Morse timer ISR
@@ -128,8 +146,6 @@ void clearBuffer() {
   bufferIndex = 0;                // Reset the index
 }
 
-#include <ctype.h> // Required for toupper
-
 void drawtext(const char text[]) {
   const int maxCharsPerLine = 10; // Characters per display per line
   const int linesPerDisplay = 3; // Number of lines per display
@@ -140,7 +156,6 @@ void drawtext(const char text[]) {
   for (int line = 0; line < linesPerDisplay; line++) {
     // Left display
     currentChar = getNextSegment(text, currentChar, textLength, maxCharsPerLine, lineBuffer);
-    toUpperCase(lineBuffer); // Convert to uppercase
     displayLeft.setTextSize(2);
     displayLeft.setTextColor(SSD1306_WHITE);
     displayLeft.setCursor(0, line * 10 * 2);
@@ -148,7 +163,6 @@ void drawtext(const char text[]) {
 
     // Middle display
     currentChar = getNextSegment(text, currentChar, textLength, maxCharsPerLine, lineBuffer);
-    toUpperCase(lineBuffer); // Convert to uppercase
     displayMiddle.setTextSize(2);
     displayMiddle.setTextColor(SSD1306_WHITE);
     displayMiddle.setCursor(0, line * 10 * 2);
@@ -156,7 +170,6 @@ void drawtext(const char text[]) {
 
     // Right display
     currentChar = getNextSegment(text, currentChar, textLength, maxCharsPerLine, lineBuffer);
-    toUpperCase(lineBuffer); // Convert to uppercase
     displayRight.setTextSize(2);
     displayRight.setTextColor(SSD1306_WHITE);
     displayRight.setCursor(0, line * 10 * 2);
@@ -171,6 +184,7 @@ void toUpperCase(char *text) {
     text++;
   }
 }
+
 int getNextSegment(const char *text, int start, int textLength, int maxChars, char *buffer) {
   int end = start;
 
