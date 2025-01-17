@@ -90,39 +90,45 @@ void loop() {
 
     // Check for buffer overflow
     if (bufferIndex >= BUFFER_SIZE - 1) {
-      // Find the start of the current word
-      int wordStart = bufferIndex - 1;
-      while (wordStart >= 0 && buffer[wordStart] != ' ') {
-        wordStart--;
-      }
-      wordStart++; // Move to the first character of the word
-
-      // Copy the word to a temporary buffer
-      char tempBuffer[BUFFER_SIZE] = "";
-      strncpy(tempBuffer, buffer + wordStart, bufferIndex - wordStart);
-      tempBuffer[bufferIndex - wordStart] = '\0'; // Null-terminate
-
-      // Clear the buffer and screen
-      clearBuffer();
-      displayRight.clearDisplay();
-      displayLeft.clearDisplay();
-      displayMiddle.clearDisplay();
-      displayRight.display();
-      displayMiddle.display();
-      displayLeft.display();
-
-      // Copy the word into the cleared buffer
-      strcpy(buffer, tempBuffer);
-      bufferIndex = strlen(tempBuffer); // Update the buffer index
+      clearBuffer(); // Clear the buffer if it overflows
     }
 
     // Append the new character to the buffer
     buffer[bufferIndex++] = (char)inByte;
     buffer[bufferIndex] = '\0'; // Null-terminate the string
+
+    // Check if a space or end of word character is received
+    if (inByte == ' ' || inByte == '\n' || inByte == '\r') {
+      // Extract the last word from the buffer
+      char lastWord[10] = ""; // Assuming Morse code words are shorter than 10 characters
+      int lastWordStart = bufferIndex - 2;
+      while (lastWordStart >= 0 && buffer[lastWordStart] != ' ') {
+        lastWordStart--;
+      }
+      lastWordStart++; // Move to the first character of the word
+
+      strncpy(lastWord, buffer + lastWordStart, bufferIndex - lastWordStart - 1);
+      lastWord[bufferIndex - lastWordStart - 1] = '\0'; // Null-terminate the word
+
+      // Convert the last word to uppercase (in case it's not already)
+      toUpperCase(lastWord);
+
+      // Check if the last word matches any prosigns
+      if (strcmp(lastWord, "AR") == 0 || strcmp(lastWord, "BK") == 0 || 
+          strcmp(lastWord, "K") == 0 || strcmp(lastWord, "KN") == 0 || 
+          strcmp(lastWord, "SK") == 0 || strcmp(lastWord, "CL") == 0 || 
+          strcmp(lastWord, "BT") == 0) {
+            clearBuffer();       
+            displayRight.clearDisplay(); 
+            displayLeft.clearDisplay();
+            displayMiddle.clearDisplay();
+            screenCleared = true; 
+            Serial.write("\n");
+      }
+    }
   }
 
-
-    // Check if soft timeout has occurred
+  // Check if soft timeout has occurred
   if ((currentTime - lastReceivedTime > TIMEOUT * 1000) && !screenCleared) {
     clearBuffer();       // Clear the buffer
     displayRight.clearDisplay(); // Clear the screen
@@ -131,7 +137,7 @@ void loop() {
     screenCleared = true; // Mark screen as cleared
     Serial.write("\n");
   }
-  
+
   // Display the buffer on the OLED screen only if not cleared
   if (!screenCleared) {
     displayRight.clearDisplay();
