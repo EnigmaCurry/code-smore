@@ -29,7 +29,7 @@ pub fn gpio_receive(
 
     let mut decoder = get_decoder(dot_duration);
     let mut last_signal_change = Instant::now();
-    let mut last_signal_state = !pin.is_low(); // Normally high logic
+    let mut last_signal_state = pin.is_low();
     let mut message_pending = false; // Tracks if there's a pending message to finalize
 
     if !buffer_messages {
@@ -39,7 +39,7 @@ pub fn gpio_receive(
     info!("Receiving morse code from GPIO pin {pin_number} - Press Ctrl-C to stop.");
 
     loop {
-        let current_state = !pin.is_low(); // Invert the signal logic
+        let current_state = pin.is_low();
 
         // Handle state changes
         if current_state != last_signal_state {
