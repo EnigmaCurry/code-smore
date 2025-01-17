@@ -8,7 +8,7 @@
 #include <TimerOne.h>
 #include <ctype.h> // toupper
 
-#define WPM 20 // Default number of code words per minute
+#define WPM 20 // Default number of code words per minute on startup
 #define RX_PIN 2 // Receive morse code on GPIO pin RX_PIN
 #define TX_PIN 3 // Send morse code on GPIO pin TX_PIN
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -18,8 +18,9 @@
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 #define SERIAL_BAUD 9600
-#define TIMEOUT 20 // Soft timeout in seconds of inactivity to clear the screen when new message arrives
-#define HARD_TIMEOUT 180 // Hard timeout in seconds to clear screen for power saving purposes
+#define TIMEOUT 30 // Soft timeout in seconds of inactivity to clear the screen when new message decoded
+                   // (Prosigns like BK and K will clear the screen regardless of the timing)
+#define HARD_TIMEOUT 3600 // Hard timeout in seconds to clear screen for power saving purposes
 #define BUFFER_SIZE 82 // a bit smaller than 90 because of some bug that overflows the screen
 #define CONFIG_BUTTON 10 // Pin for the config menu
 #define DEBOUNCE_DELAY 50 // Debounce delay in milliseconds
