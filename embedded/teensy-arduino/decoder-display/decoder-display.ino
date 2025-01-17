@@ -30,7 +30,8 @@ Lewis Morse;
 char buffer[BUFFER_SIZE] = ""; // Buffer to store received characters
 int bufferIndex = 0;           // Tracks the current position in the buffer
 unsigned long lastReceivedTime = 0; // Tracks the last time a character was received
-const unsigned long timeout = 15000; // Timeout in milliseconds
+const unsigned long timeout = 15; // Soft timeout in econds of inactivity to clear the screen when new message arrives
+const unsigned long hard_timeout = 180; // Hard timeout in seconds to clear screen for power saving purposes
 bool screenCleared = false; // Tracks if the screen has been cleared due to timeout
 
 void setup() {
@@ -63,6 +64,18 @@ void setup() {
 
 void loop() {
   unsigned long currentTime = millis();
+
+  // Check if hard timeout has occurred
+  if ((millis() - lastReceivedTime > hard_timeout * 1000)) {
+    clearBuffer();
+    displayRight.clearDisplay(); 
+    displayLeft.clearDisplay();
+    displayMiddle.clearDisplay();
+    displayRight.display();
+    displayLeft.display();
+    displayMiddle.display();
+    screenCleared = true;
+  }
 
   // Check if Morse data is available and store it in the buffer
   if (Morse.available()) {
@@ -106,8 +119,8 @@ void loop() {
     buffer[bufferIndex] = '\0'; // Null-terminate the string
   }
 
-  // Check if timeout has occurred
-  if ((currentTime - lastReceivedTime > timeout) && !screenCleared) {
+    // Check if soft timeout has occurred
+  if ((currentTime - lastReceivedTime > timeout * 1000) && !screenCleared) {
     clearBuffer();       // Clear the buffer
     displayRight.clearDisplay(); // Clear the screen
     displayLeft.clearDisplay();
