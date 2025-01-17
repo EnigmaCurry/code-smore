@@ -5,6 +5,7 @@ has 3 OLED dispalys to display the decoded message in realtime.
 
 ![schematic](decoder-display.webp)
 
+The embedded decoder is imported from [Lewis](https://git.defproc.co.uk/DefProc/Lewis/).
 
 # Setup Arduino IDE for Teensy boards
 
@@ -30,4 +31,5 @@ flatpak run cc.arduino.IDE2
  * Click `OK`.
  * Go to `Tools` -> `Board` -> `Boards Manager`.
  * Search for  "teensy"" and install `Teensy (for Arduino IDE ...)` (latest version)
-
+ * Open the `Library Manager` and search for `Lewis` and install it
+   (this is the embedded morse code decoder library).
