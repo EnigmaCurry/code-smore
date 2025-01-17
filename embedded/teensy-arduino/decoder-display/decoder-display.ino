@@ -8,7 +8,7 @@
 #include <TimerOne.h>
 #include <ctype.h> // toupper
 
-#define WPM 20 // Code Words Per Minute
+#define WPM 20 // Default number of code words per minute
 #define RX_PIN 2 // Receive morse code on GPIO pin RX_PIN
 #define TX_PIN 3 // Send morse code on GPIO pin TX_PIN
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -21,6 +21,8 @@
 #define TIMEOUT 20 // Soft timeout in seconds of inactivity to clear the screen when new message arrives
 #define HARD_TIMEOUT 180 // Hard timeout in seconds to clear screen for power saving purposes
 #define BUFFER_SIZE 82 // a bit smaller than 90 because of some bug that overflows the screen
+#define CONFIG_BUTTON 10 // Pin for the config menu
+#define DEBOUNCE_DELAY 50 // Debounce delay in milliseconds
 
 elapsedMillis currentTime;
 
@@ -37,10 +39,18 @@ unsigned long lastReceivedTime = 0; // Tracks the last time a character was rece
 bool screenCleared = false; // Tracks if the screen has been cleared due to timeout
 bool powerSaved = false; // Tracks if the screen has beeen cleared due to power saving
 
+int wpm = WPM; // Current WPM setting, starts with the defined WPM
+unsigned long lastConfigButtonPress = 0; // Tracks the last button press time
+bool configButtonState = HIGH; // Current state of the button
+bool lastConfigButtonState = HIGH; // Last known state of the button
+
+
 void setup() {
   Serial.begin(SERIAL_BAUD);
+  
+  pinMode(CONFIG_BUTTON, INPUT_PULLUP);
 
-  Morse.begin(RX_PIN, TX_PIN, WPM, MORSE_INTERRUPT);
+  Morse.begin(RX_PIN, TX_PIN, wpm, MORSE_INTERRUPT);
   Timer1.initialize(MORSE_INTERRUPT_FREQUENCY * 100);
   Timer1.attachInterrupt(MorseISR);
 
@@ -66,6 +76,8 @@ void setup() {
 }
 
 void loop() {
+  handleConfigButtonPress();
+
   // Check if Morse data is available and store it in the buffer
   if (Morse.available()) {
     int inByte = toUpperCase(Morse.read());
@@ -157,6 +169,58 @@ void MorseISR() {
   }
 
   Morse.timerISR();
+}
+
+void handleConfigButtonPress() {
+  // Check for button press
+  bool currentButtonState = digitalRead(CONFIG_BUTTON);
+  if (currentButtonState == LOW && lastConfigButtonState == HIGH &&
+      (currentTime - lastConfigButtonPress > DEBOUNCE_DELAY)) {
+    // Button was pressed
+    lastConfigButtonPress = currentTime;
+    wpm = (wpm < 30) ? wpm + 5 : 10; // Increment WPM and wrap around
+    Morse.begin(RX_PIN, TX_PIN, wpm, MORSE_INTERRUPT);
+
+    // Display the WPM on the screens
+    displayRight.clearDisplay();
+    displayMiddle.clearDisplay();
+    displayLeft.clearDisplay();
+
+    char wpmMessage[16];
+    sprintf(wpmMessage, "WPM: %d", wpm);
+
+    displayRight.setTextSize(2);
+    displayRight.setTextColor(SSD1306_WHITE);
+    displayRight.setCursor(0, 0);
+    displayRight.println(wpmMessage);
+
+    displayMiddle.setTextSize(2);
+    displayMiddle.setTextColor(SSD1306_WHITE);
+    displayMiddle.setCursor(0, 0);
+    displayMiddle.println(wpmMessage);
+
+    displayLeft.setTextSize(2);
+    displayLeft.setTextColor(SSD1306_WHITE);
+    displayLeft.setCursor(0, 0);
+    displayLeft.println(wpmMessage);
+
+    displayRight.display();
+    displayMiddle.display();
+    displayLeft.display();
+
+    Serial.print("# WPM: ");
+    Serial.println(wpm);
+
+    delay(2000); // Show the message for 2 seconds
+
+    displayRight.clearDisplay();
+    displayMiddle.clearDisplay();
+    displayLeft.clearDisplay();
+    displayRight.display();
+    displayMiddle.display();
+    displayLeft.display();
+  }
+  lastConfigButtonState = currentButtonState;
 }
 
 // Function to clear the buffer
