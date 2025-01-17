@@ -8,7 +8,7 @@
 #include <TimerOne.h>
 #include <ctype.h> // toupper
 
-#define WPM 30 // Code Words Per Minute
+#define WPM 20 // Code Words Per Minute
 #define RX_PIN 2 // Receive morse code on GPIO pin RX_PIN
 #define TX_PIN 3 // Send morse code on GPIO pin TX_PIN
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -43,17 +43,17 @@ void setup() {
 
 
   if (!displayLeft.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("displayLeft failed"));
+    Serial.println(F("ERROR: displayLeft failed"));
     for (;;)
       ; // Don't proceed, loop forever
   }  
   if (!displayMiddle.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("displayMiddle failed"));
+    Serial.println(F("ERROR: displayMiddle failed"));
     for (;;)
       ; // Don't proceed, loop forever
   }
   if (!displayRight.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("displayRight failed"));
+    Serial.println(F("ERROR: displayRight failed"));
     for (;;)
       ; // Don't proceed, loop forever
   }
@@ -66,7 +66,7 @@ void loop() {
   unsigned long currentTime = millis();
 
   // Check if hard timeout has occurred
-  if ((millis() - lastReceivedTime > HARD_TIMEOUT * 1000)) {
+  if ((millis() - lastReceivedTime > HARD_TIMEOUT * 1000) && !screenCleared) {
     clearBuffer();
     displayRight.clearDisplay(); 
     displayLeft.clearDisplay();
@@ -75,6 +75,7 @@ void loop() {
     displayLeft.display();
     displayMiddle.display();
     screenCleared = true;
+    Serial.write("\n\n");
   }
 
   // Check if Morse data is available and store it in the buffer
@@ -126,6 +127,7 @@ void loop() {
     displayLeft.clearDisplay();
     displayMiddle.clearDisplay();
     screenCleared = true; // Mark screen as cleared
+    Serial.write("\n");
   }
 
   // Display the buffer on the OLED screen only if not cleared
