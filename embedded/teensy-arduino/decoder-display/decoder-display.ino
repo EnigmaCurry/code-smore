@@ -18,6 +18,9 @@
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 #define SERIAL_BAUD 9600
+#define TIMEOUT 15 // Soft timeout in seconds of inactivity to clear the screen when new message arrives
+#define HARD_TIMEOUT 180 // Hard timeout in seconds to clear screen for power saving purposes
+#define BUFFER_SIZE 82 // a bit smaller than 90 because of some bug that overflows the screen
 
 // Have to put the displays on separate wire busses because they have the same unchangable address: 0x3c
 Adafruit_SSD1306 displayRight(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -26,12 +29,9 @@ Adafruit_SSD1306 displayLeft(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire2, OLED_RESET);
 
 Lewis Morse;
 
-#define BUFFER_SIZE 82 // a bit smaller than 90 because of some bug that overflows the screen
 char buffer[BUFFER_SIZE] = ""; // Buffer to store received characters
 int bufferIndex = 0;           // Tracks the current position in the buffer
 unsigned long lastReceivedTime = 0; // Tracks the last time a character was received
-const unsigned long timeout = 15; // Soft timeout in econds of inactivity to clear the screen when new message arrives
-const unsigned long hard_timeout = 180; // Hard timeout in seconds to clear screen for power saving purposes
 bool screenCleared = false; // Tracks if the screen has been cleared due to timeout
 
 void setup() {
@@ -66,7 +66,7 @@ void loop() {
   unsigned long currentTime = millis();
 
   // Check if hard timeout has occurred
-  if ((millis() - lastReceivedTime > hard_timeout * 1000)) {
+  if ((millis() - lastReceivedTime > HARD_TIMEOUT * 1000)) {
     clearBuffer();
     displayRight.clearDisplay(); 
     displayLeft.clearDisplay();
@@ -120,7 +120,7 @@ void loop() {
   }
 
     // Check if soft timeout has occurred
-  if ((currentTime - lastReceivedTime > timeout * 1000) && !screenCleared) {
+  if ((currentTime - lastReceivedTime > TIMEOUT * 1000) && !screenCleared) {
     clearBuffer();       // Clear the buffer
     displayRight.clearDisplay(); // Clear the screen
     displayLeft.clearDisplay();
