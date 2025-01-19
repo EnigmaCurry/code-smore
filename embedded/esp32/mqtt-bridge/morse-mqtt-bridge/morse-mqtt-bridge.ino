@@ -5,6 +5,8 @@
 ///  {MQTT_TOPIC_ROOT}/rx_stream    - the stream of morse code letters received
 ///  {MQTT_TOPIC_ROOT}/rx_messages  - complete messages received split by prosign or timeout
 //  {MQTT_TOPIC_ROOT}/tx_state  - streams the state of the tramsmit mode (1=tx 0=rx)
+//  {MQTT_TOPIC_ROOT}/tx_stream  - the stream of morse code letters being sent
+//  {MQTT_TOPIC_ROOT}/tx_messages  - complete messages to send
 
 #include "Arduino.h"
 #include <WiFi.h>
@@ -23,6 +25,7 @@ const char* TLS_CERT = SECRET_TLS_CERT; // e.g. your cert from https://test.mosq
 const char* TLS_KEY = SECRET_TLS_KEY; // your TLS key
 const char* TLS_CA_CERT = SECRET_TLS_CA_CERT; // the server's CA cert
 const char* MQTT_TOPIC_ROOT = SECRET_MQTT_TOPIC_ROOT; // e.g. morse-bridge
+const int MQTT_QOS = 2;
 
 const int WPM = 20;
 const bool MORSE_INTERRUPT = false;
@@ -79,12 +82,14 @@ bool is_transmitting() {
 }
 
 void loop() {
+  Morse.checkIncoming();
+
   if (!is_transmitting() && Morse.available()) {
     int inByte = toUpperCase(Morse.read());
     Serial.write(inByte);
     lastReceivedTime = millis();
 
-    publishStream(inByte);
+    publishRxStream(inByte);
     
     // Check for buffer overflow
     if (bufferIndex >= BUFFER_SIZE - 1) {
@@ -216,6 +221,7 @@ void onMqttConnect(esp_mqtt_client_handle_t client)
                              {
                                char inByte = payload.charAt(i);
                                Morse.write(inByte);
+                               publishTxStream(inByte);
                                lastTransmitTime = millis();
                              }
                            tx_state = false;
@@ -249,25 +255,32 @@ void toUpperCase(char *text) {
 void publishMessage() {
   char topic[100];
   snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_messages");
-  mqttClient.publish(topic, buffer, 2, MQTT_RETAIN_MESSAGES);
+  mqttClient.publish(topic, buffer, MQTT_QOS, MQTT_RETAIN_MESSAGES);
 }
 
 void publishMessageBreak() {
   char topic[100];
   snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_messages");
-  mqttClient.publish(topic, " ", 2, MQTT_RETAIN_MESSAGES);
+  mqttClient.publish(topic, " ", MQTT_QOS, MQTT_RETAIN_MESSAGES);
 }
 
-void publishStream(char ch) {
+void publishRxStream(char ch) {
     char topic[100];
     snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_stream");
     char msg[2] = { ch, '\0' };
-    mqttClient.publish(topic, msg, 1, MQTT_RETAIN_MESSAGES);
+    mqttClient.publish(topic, msg, MQTT_QOS, MQTT_RETAIN_MESSAGES);
+}
+
+void publishTxStream(char ch) {
+    char topic[100];
+    snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_stream");
+    char msg[2] = { ch, '\0' };
+    mqttClient.publish(topic, msg, MQTT_QOS, MQTT_RETAIN_MESSAGES);
 }
 
 void publishTxState() {
     char topic[100];
     snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_state");
-    mqttClient.publish("morse-bridge/tx_state", tx_state ? "1" : "0", 0, MQTT_RETAIN_MESSAGES);
+    mqttClient.publish("morse-bridge/tx_state", tx_state ? "1" : "0", MQTT_QOS, MQTT_RETAIN_MESSAGES);
     lastPublishStateTime = millis();
 }
