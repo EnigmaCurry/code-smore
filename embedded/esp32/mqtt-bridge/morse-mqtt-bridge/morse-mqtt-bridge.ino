@@ -52,7 +52,6 @@ void setup()
   pinMode(MORSE_RECEIVE_PIN, INPUT);
   Morse.begin(MORSE_RECEIVE_PIN, MORSE_SEND_PIN, WPM, MORSE_INTERRUPT);
 
-  Serial.write("OK\n");
 }
 
 void loop() {
@@ -62,6 +61,8 @@ void loop() {
     Serial.write(inByte);
     lastReceivedTime = millis();
 
+    publishStream(inByte);
+    
     // Check for buffer overflow
     if (bufferIndex >= BUFFER_SIZE - 1) {
       publishMessage();
@@ -95,6 +96,10 @@ void loop() {
         publishMessage();
         clearBuffer();       
         Serial.write("\n");
+        if (strcmp(lastWord, "BT") != 0) {
+          publishMessageBreak();
+          Serial.write("\n");
+        }
       }
     }
   }
@@ -103,7 +108,8 @@ void loop() {
   if (bufferIndex > 0 && (millis() - lastReceivedTime > MORSE_MESSAGE_TIMEOUT * 1000)) {
     publishMessage();
     clearBuffer();
-    Serial.write("\n");
+    publishMessageBreak();
+    Serial.write("\n\n");
   }
 
   // Send each serial byte to Morse output
@@ -177,4 +183,17 @@ void publishMessage() {
   char message_topic[100];
   snprintf(message_topic, sizeof(message_topic), "%s/%s", MQTT_TOPIC_ROOT, "messages");
   mqttClient.publish(message_topic, buffer, 2, MQTT_RETAIN_MESSAGES);
+}
+
+void publishMessageBreak() {
+  char message_topic[100];
+  snprintf(message_topic, sizeof(message_topic), "%s/%s", MQTT_TOPIC_ROOT, "messages");
+  mqttClient.publish(message_topic, " ", 2, MQTT_RETAIN_MESSAGES);
+}
+
+void publishStream(char ch) {
+    char stream_topic[100];
+    snprintf(stream_topic, sizeof(stream_topic), "%s/%s", MQTT_TOPIC_ROOT, "stream");
+    char msg[2] = { ch, '\0' };
+    mqttClient.publish(stream_topic, msg, 1, MQTT_RETAIN_MESSAGES);
 }
