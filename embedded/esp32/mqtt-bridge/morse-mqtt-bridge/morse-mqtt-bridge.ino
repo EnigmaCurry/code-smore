@@ -1,3 +1,11 @@
+// ESP32 Morse Code MQTT transceiver  
+
+// Set your WiFi credentials and MQTT settings in secrets.h
+// This controller will publish to the following MQTT topics based on your root topic name:
+///  {MQTT_TOPIC_ROOT}/rx_stream    - the stream of morse code letters received
+///  {MQTT_TOPIC_ROOT}/rx_messages  - complete messages received split by prosign or timeout
+//  {MQTT_TOPIC_ROOT}/tx_state  - streams the state of the tramsmit mode (1=tx 0=rx)
+
 #include "Arduino.h"
 #include <WiFi.h>
 #include "ESP32MQTTClient.h"
@@ -17,10 +25,10 @@ const char* TLS_CA_CERT = SECRET_TLS_CA_CERT; // the server's CA cert
 const char* MQTT_TOPIC_ROOT = SECRET_MQTT_TOPIC_ROOT; // e.g. morse-bridge
 
 const int WPM = 20;
-const bool MORSE_INTERRUPT = true;
-const int MORSE_INTERRUPT_FREQUENCY = 100;
-const int MORSE_RECEIVE_PIN = 4;
-const int MORSE_SEND_PIN = 2;
+const bool MORSE_INTERRUPT = false;
+const int MORSE_INTERRUPT_FREQUENCY = 100; //Hz
+const int MORSE_RX_PIN = 4;
+const int MORSE_TX_PIN = 2;
 const int MORSE_MESSAGE_TIMEOUT = 15; // Seconds after which an incomplete message will finalize
 const int BUFFER_SIZE = 500;
 const bool MQTT_RETAIN_MESSAGES = false;
@@ -28,6 +36,9 @@ const bool MQTT_RETAIN_MESSAGES = false;
 ESP32MQTTClient mqttClient;
 Lewis Morse;
 unsigned long lastReceivedTime = 0; // Tracks the last time a character was received
+unsigned long lastTransmitTime = 0; // Tracks the last time a character was sent
+unsigned long lastPublishStateTime = 0;
+bool tx_state = false; // Track current transmit or receive state
 char buffer[BUFFER_SIZE] = ""; // Buffer the current message
 unsigned int bufferIndex = 0;           // Tracks the current position in the buffer
 
@@ -37,26 +48,38 @@ void setup()
   /* log_i(); */
   /* log_i("setup, ESP.getSdkVersion(): "); */
   /* log_i("%s", ESP.getSdkVersion()); */
-
+  delay(500);
   connectToWifi();
-    mqttClient.enableDebuggingMessages();
 
-  mqttClient.setURI(SECRET_MQTT_SERVER);
-  mqttClient.enableLastWillMessage("lwt", "I am going offline");
-  mqttClient.setKeepAlive(30);
-  mqttClient.setClientCert(TLS_CERT);
-  mqttClient.setKey(TLS_KEY);
-  mqttClient.setCaCert(TLS_CA_CERT);
-  mqttClient.loopStart();
+  connectToMqtt();
+  publishTxState();
+  
+  Morse.begin(MORSE_RX_PIN, MORSE_TX_PIN, WPM, MORSE_INTERRUPT);
 
-  pinMode(MORSE_RECEIVE_PIN, INPUT);
-  Morse.begin(MORSE_RECEIVE_PIN, MORSE_SEND_PIN, WPM, MORSE_INTERRUPT);
+  /* morseTimerSemaphore = xSemaphoreCreateBinary(); */
+  /* morseTimer = timerBegin(1000000); // timer ticks at 1Mhz */
+  /* timerAttachInterrupt(morseTimer, &onMorseTimer); */
+  /* timerAlarm(morseTimer, (1.0 / MORSE_INTERRUPT_FREQUENCY) * 1e6, true, 0); */
+}
 
+bool is_transmitting() {
+  // longest word is fifteen dots, plus a three dot gap:
+  bool is_tx = millis() - lastTransmitTime < (1200/WPM) * 18;
+  // publish tx_state changes:
+  if ((is_tx && !tx_state) || (!is_tx && tx_state)) {
+    tx_state = is_tx;
+    // publish instantaenous state change:
+    publishTxState();
+  } else if (!tx_state && (millis() - lastPublishStateTime > MORSE_MESSAGE_TIMEOUT * 1000)) {
+    // publish periodic message that we're ready to receive:
+    if (mqttClient.isConnected())
+      publishTxState();
+  }
+  return tx_state;
 }
 
 void loop() {
-  Morse.checkIncoming();
-  if (Morse.available()) {
+  if (!is_transmitting() && Morse.available()) {
     int inByte = toUpperCase(Morse.read());
     Serial.write(inByte);
     lastReceivedTime = millis();
@@ -74,16 +97,22 @@ void loop() {
     
     // Check if a space or end of word character is received
     if (inByte == ' ' || inByte == '\n' || inByte == '\r') {
-      // Extract the last word from the buffer
-      char lastWord[20] = ""; // Assuming Morse code words are shorter than 20 characters
+      // Extract the last word from the buffer. If its longer than 5 characters truncate.
+      char lastWord[6] = "";
       int lastWordStart = bufferIndex - 2;
+
       while (lastWordStart >= 0 && buffer[lastWordStart] != ' ') {
         lastWordStart--;
       }
       lastWordStart++; // Move to the first character of the word
 
-      strncpy(lastWord, buffer + lastWordStart, bufferIndex - lastWordStart - 1);
-      lastWord[bufferIndex - lastWordStart - 1] = '\0'; // Null-terminate the word
+      int wordLength = bufferIndex - lastWordStart - 1;
+      if (wordLength > 5) {
+        wordLength = 5; // Truncate to fit lastWord
+      }
+
+      strncpy(lastWord, buffer + lastWordStart, wordLength);
+      lastWord[wordLength] = '\0'; // Ensure null-termination
 
       // Convert the last word to uppercase (in case it's not already)
       toUpperCase(lastWord);
@@ -92,7 +121,7 @@ void loop() {
       if (strcmp(lastWord, "AR") == 0 || strcmp(lastWord, "BK") == 0 || 
           strcmp(lastWord, "K") == 0 || strcmp(lastWord, "KN") == 0 || 
           strcmp(lastWord, "SK") == 0 || strcmp(lastWord, "CL") == 0 || 
-         strcmp(lastWord, "BT") == 0) {
+          strcmp(lastWord, "BT") == 0) {
         publishMessage();
         clearBuffer();       
         Serial.write("\n");
@@ -115,7 +144,9 @@ void loop() {
   // Send each serial byte to Morse output
   if (Serial.available()) {
     int inByte = Serial.read();
+    Serial.write((char)inByte);
     Morse.write(inByte);
+    lastTransmitTime = millis();
   }
 
   delay(10);
@@ -145,14 +176,50 @@ void connectToWifi() {
   Serial.println(WiFi.localIP());
 }
 
+void connectToMqtt() {
+  mqttClient.enableDebuggingMessages();
+
+  mqttClient.setURI(SECRET_MQTT_SERVER);
+  mqttClient.enableLastWillMessage("lwt", "I am going offline");
+  mqttClient.setKeepAlive(30);
+  mqttClient.setClientCert(TLS_CERT);
+  mqttClient.setKey(TLS_KEY);
+  mqttClient.setCaCert(TLS_CA_CERT);
+  mqttClient.loopStart();
+
+  int t = 0;
+  while (true) {
+    if (mqttClient.isConnected()) {
+      Serial.write("# MQTT connected!\n");
+      break;
+    } else {
+      if (t % 10 == 0) {
+        Serial.write("# Waiting for MQTT connection ...\n");
+      };
+      t+=1;
+      delay(500);
+    }
+  }
+}
 
 void onMqttConnect(esp_mqtt_client_handle_t client)
 {
   if (mqttClient.isMyTurn(client)) // can be omitted if only one client
   {
-    mqttClient.subscribe(MQTT_TOPIC_ROOT, [](const String &payload)
+    char topic[100];
+    snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_messages");
+    mqttClient.subscribe(topic, [](const String &payload)
                          {
-                           //log_i("%s: %s", subscribeTopic, payload.c_str()); 
+                           tx_state = true;
+                           publishTxState();
+                           for (size_t i = 0; i < payload.length(); i++)
+                             {
+                               char inByte = payload.charAt(i);
+                               Morse.write(inByte);
+                               lastTransmitTime = millis();
+                             }
+                           tx_state = false;
+                           publishTxState();
                          });
   }
 }
@@ -162,10 +229,10 @@ void handleMQTT(void *handler_args, esp_event_base_t base, int32_t event_id, voi
   mqttClient.onEventCallback(event);
 }
 
-// Interrupt function to call the Morse timer ISR
-void MorseISR() {
-  Morse.timerISR();
-}
+/* // Interrupt function to call the Morse timer ISR */
+/* void ARDUINO_ISR_ATTR onMorseTimer() { */
+/*   Morse.timerISR(); */
+/* } */
 
 void clearBuffer() {
   memset(buffer, 0, BUFFER_SIZE); // Clear the buffer
@@ -180,20 +247,27 @@ void toUpperCase(char *text) {
 }
 
 void publishMessage() {
-  char message_topic[100];
-  snprintf(message_topic, sizeof(message_topic), "%s/%s", MQTT_TOPIC_ROOT, "messages");
-  mqttClient.publish(message_topic, buffer, 2, MQTT_RETAIN_MESSAGES);
+  char topic[100];
+  snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_messages");
+  mqttClient.publish(topic, buffer, 2, MQTT_RETAIN_MESSAGES);
 }
 
 void publishMessageBreak() {
-  char message_topic[100];
-  snprintf(message_topic, sizeof(message_topic), "%s/%s", MQTT_TOPIC_ROOT, "messages");
-  mqttClient.publish(message_topic, " ", 2, MQTT_RETAIN_MESSAGES);
+  char topic[100];
+  snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_messages");
+  mqttClient.publish(topic, " ", 2, MQTT_RETAIN_MESSAGES);
 }
 
 void publishStream(char ch) {
-    char stream_topic[100];
-    snprintf(stream_topic, sizeof(stream_topic), "%s/%s", MQTT_TOPIC_ROOT, "stream");
+    char topic[100];
+    snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_stream");
     char msg[2] = { ch, '\0' };
-    mqttClient.publish(stream_topic, msg, 1, MQTT_RETAIN_MESSAGES);
+    mqttClient.publish(topic, msg, 1, MQTT_RETAIN_MESSAGES);
+}
+
+void publishTxState() {
+    char topic[100];
+    snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_state");
+    mqttClient.publish("morse-bridge/tx_state", tx_state ? "1" : "0", 0, MQTT_RETAIN_MESSAGES);
+    lastPublishStateTime = millis();
 }
