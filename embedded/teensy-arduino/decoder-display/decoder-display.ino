@@ -9,7 +9,7 @@
 #include <ctype.h> // toupper
 
 #define WPM 20 // Default number of code words per minute on startup
-#define RX_PIN 2 // Receive morse code on GPIO pin RX_PIN
+#define RX_PIN 4 // Receive morse code on GPIO pin RX_PIN
 #define TX_PIN 3 // Send morse code on GPIO pin TX_PIN
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
