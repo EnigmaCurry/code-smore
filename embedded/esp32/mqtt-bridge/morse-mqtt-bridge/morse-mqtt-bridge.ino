@@ -3,10 +3,10 @@
 // Set your WiFi credentials and MQTT settings in secrets.h
 // This controller will publish to the following MQTT topics based on your root topic name:
 ///  {MQTT_TOPIC_ROOT}/rx_stream    - the stream of morse code letters received
-///  {MQTT_TOPIC_ROOT}/rx_messages  - complete messages received split by prosign or timeout
+///  {MQTT_TOPIC_ROOT}/rx_message  - complete messages received split by prosign or timeout
 //  {MQTT_TOPIC_ROOT}/tx_state  - streams the state of the tramsmit mode (1=tx 0=rx)
 //  {MQTT_TOPIC_ROOT}/tx_stream  - the stream of morse code letters being sent
-//  {MQTT_TOPIC_ROOT}/tx_messages  - complete messages to send
+//  {MQTT_TOPIC_ROOT}/tx_message  - complete messages to send
 
 #include "Arduino.h"
 #include <WiFi.h>
@@ -25,6 +25,7 @@ const char* TLS_CERT = SECRET_TLS_CERT; // e.g. your cert from https://test.mosq
 const char* TLS_KEY = SECRET_TLS_KEY; // your TLS key
 const char* TLS_CA_CERT = SECRET_TLS_CA_CERT; // the server's CA cert
 const char* MQTT_TOPIC_ROOT = SECRET_MQTT_TOPIC_ROOT; // e.g. morse-bridge
+const bool MQTT_ENABLE_STREAMING = false; // e.g. enable single letter streaming
 const int MQTT_QOS = 2;
 
 const int WPM = 20;
@@ -85,7 +86,7 @@ void loop() {
   Morse.checkIncoming();
 
   if (!is_transmitting() && Morse.available()) {
-    int inByte = toUpperCase(Morse.read());
+    int inByte = (char)toupper(Morse.read());
     Serial.write(inByte);
     lastReceivedTime = millis();
 
@@ -99,45 +100,9 @@ void loop() {
     
     buffer[bufferIndex++] = (char)inByte;
     buffer[bufferIndex] = '\0'; // Null-terminate the string
-    
-    // Check if a space or end of word character is received
-    if (inByte == ' ' || inByte == '\n' || inByte == '\r') {
-      // Extract the last word from the buffer. If its longer than 5 characters truncate.
-      char lastWord[6] = "";
-      int lastWordStart = bufferIndex - 2;
 
-      while (lastWordStart >= 0 && buffer[lastWordStart] != ' ') {
-        lastWordStart--;
-      }
-      lastWordStart++; // Move to the first character of the word
-
-      int wordLength = bufferIndex - lastWordStart - 1;
-      if (wordLength > 5) {
-        wordLength = 5; // Truncate to fit lastWord
-      }
-
-      strncpy(lastWord, buffer + lastWordStart, wordLength);
-      lastWord[wordLength] = '\0'; // Ensure null-termination
-
-      // Convert the last word to uppercase (in case it's not already)
-      toUpperCase(lastWord);
-
-      // Check if the last word matches any prosigns
-      if (strcmp(lastWord, "AR") == 0 || strcmp(lastWord, "BK") == 0 || 
-          strcmp(lastWord, "K") == 0 || strcmp(lastWord, "KN") == 0 || 
-          strcmp(lastWord, "SK") == 0 || strcmp(lastWord, "CL") == 0 || 
-          strcmp(lastWord, "BT") == 0) {
-        publishMessage();
-        clearBuffer();       
-        Serial.write("\n");
-        if (strcmp(lastWord, "BT") != 0) {
-          publishMessageBreak();
-          Serial.write("\n");
-        }
-      }
-    }
+    split_message_on_prosign(inByte, false);
   }
-
   // Check if an incomplete message has been idle and finalize the message log.
   if (bufferIndex > 0 && (millis() - lastReceivedTime > MORSE_MESSAGE_TIMEOUT * 1000)) {
     publishMessage();
@@ -145,15 +110,15 @@ void loop() {
     publishMessageBreak();
     Serial.write("\n\n");
   }
-
+  
   // Send each serial byte to Morse output
   if (Serial.available()) {
-    int inByte = Serial.read();
+    int inByte = (char)toupper(Serial.read());
     Serial.write((char)inByte);
     Morse.write(inByte);
     lastTransmitTime = millis();
   }
-
+  
   delay(10);
 }
 
@@ -210,24 +175,36 @@ void connectToMqtt() {
 void onMqttConnect(esp_mqtt_client_handle_t client)
 {
   if (mqttClient.isMyTurn(client)) // can be omitted if only one client
-  {
-    char topic[100];
-    snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_messages");
-    mqttClient.subscribe(topic, [](const String &payload)
-                         {
-                           tx_state = true;
-                           publishTxState();
-                           for (size_t i = 0; i < payload.length(); i++)
-                             {
-                               char inByte = payload.charAt(i);
-                               Morse.write(inByte);
-                               publishTxStream(inByte);
-                               lastTransmitTime = millis();
-                             }
-                           tx_state = false;
-                           publishTxState();
-                         });
-  }
+    {
+      char topic[100];
+      snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_message");
+      mqttClient.subscribe(topic, [](const String &payload)
+                           {
+                             tx_state = true;
+                             publishTxState();
+                             for (size_t i = 0; i < payload.length(); i++)
+                               {
+                                 char inByte = (char)toupper(payload.charAt(i));
+                                 // Check for buffer overflow:
+                                 // TODO: fix long message truncation
+                                 if (bufferIndex >= BUFFER_SIZE - 1) {
+                                   sendMorseBuffer();
+                                   break;
+                                 }
+                                 buffer[bufferIndex++] = (char)inByte;
+                                 buffer[bufferIndex] = '\0'; // Null-terminate the string
+                                 // Check for end of payload:
+                                 if (i == payload.length() - 1) {
+                                   sendMorseBuffer();
+                                   break;
+                                 }
+                                 split_message_on_prosign((char)inByte, true);
+                               }
+                             Serial.write("\n");
+                             tx_state = false;
+                             publishTxState();
+                           });
+    }
 }
 
 void handleMQTT(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
@@ -245,42 +222,126 @@ void clearBuffer() {
   bufferIndex = 0;                // Reset the index
 }
 
-void toUpperCase(char *text) {
-  while (*text) {
-    *text = toupper(*text);
-    text++;
-  }
-}
-
 void publishMessage() {
   char topic[100];
-  snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_messages");
+  snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_message");
   mqttClient.publish(topic, buffer, MQTT_QOS, MQTT_RETAIN_MESSAGES);
 }
 
 void publishMessageBreak() {
   char topic[100];
-  snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_messages");
+  snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_message");
   mqttClient.publish(topic, " ", MQTT_QOS, MQTT_RETAIN_MESSAGES);
 }
 
 void publishRxStream(char ch) {
+  if (MQTT_ENABLE_STREAMING) {
     char topic[100];
     snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "rx_stream");
     char msg[2] = { ch, '\0' };
     mqttClient.publish(topic, msg, MQTT_QOS, MQTT_RETAIN_MESSAGES);
+  }
 }
 
 void publishTxStream(char ch) {
+  if (MQTT_ENABLE_STREAMING) {
     char topic[100];
     snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_stream");
     char msg[2] = { ch, '\0' };
     mqttClient.publish(topic, msg, MQTT_QOS, MQTT_RETAIN_MESSAGES);
+  }
 }
 
 void publishTxState() {
-    char topic[100];
-    snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_state");
-    mqttClient.publish("morse-bridge/tx_state", tx_state ? "1" : "0", MQTT_QOS, MQTT_RETAIN_MESSAGES);
-    lastPublishStateTime = millis();
+  char topic[100];
+  snprintf(topic, sizeof(topic), "%s/%s", MQTT_TOPIC_ROOT, "tx_state");
+  mqttClient.publish("morse-bridge/tx_state", tx_state ? "1" : "0", MQTT_QOS, MQTT_RETAIN_MESSAGES);
+  lastPublishStateTime = millis();
+}
+
+void sendMorseBuffer() {
+  buffer[BUFFER_SIZE - 1] = '\0';
+  for (int i = 0; i < BUFFER_SIZE && buffer[i] != '\0'; i++) {
+    Morse.write(buffer[i]);
+    lastTransmitTime = millis();
+    Serial.write(buffer[i]);
+    publishTxStream(buffer[i]);
+  }
+  Serial.write('\n');
+  publishMessage();
+  clearBuffer();
+}
+
+void split_message_on_prosign(char inByte, bool is_tx) {
+  // Check if a space or end of word character is received
+  if (inByte == ' ' || inByte == '\n' || inByte == '\r') {
+    // Ignore the last character (space or newline)
+    int checkIndex = bufferIndex - 1;
+      
+    // Check the last three characters in the buffer, considering possible leading spaces
+    if (checkIndex >= 3) {
+      if (strncmp(buffer + checkIndex - 3, " AR", 3) == 0 ||
+          strncmp(buffer + checkIndex - 3, " BK", 3) == 0 ||
+          strncmp(buffer + checkIndex - 3, " KN", 3) == 0 ||
+          strncmp(buffer + checkIndex - 3, " SK", 3) == 0 ||
+          strncmp(buffer + checkIndex - 3, " CL", 3) == 0 ||
+          strncmp(buffer + checkIndex - 2, " K", 2) == 0) {
+        if (is_tx) {
+          sendMorseBuffer();
+          Serial.write("\n"); //extra newline after sendMorseBuffer did too
+          publishMessageBreak();
+        } else {
+          publishMessage();
+          Serial.write("\n\n");
+          publishMessageBreak();
+          clearBuffer();
+        }
+      } else if (strncmp(buffer + checkIndex - 3, " BT", 3) == 0) {
+        if (is_tx) {
+          sendMorseBuffer();
+        } else {
+          publishMessage();
+          Serial.write("\n");
+          clearBuffer();
+        }
+      }
+    } else if (checkIndex >= 2) {
+      if (strncmp(buffer, "AR", 2) == 0 ||
+          strncmp(buffer, "BK", 2) == 0 ||
+          strncmp(buffer, "KN", 2) == 0 ||
+          strncmp(buffer, "SK", 2) == 0 ||
+          strncmp(buffer, "CL", 2) == 0 ||
+          strncmp(buffer, " K", 2) == 0) {
+        if (is_tx) {
+          sendMorseBuffer();
+          publishMessageBreak();
+        } else {
+          publishMessage();
+          Serial.write("\n\n");
+          publishMessageBreak();
+          clearBuffer();
+        }
+      } else if (strncmp(buffer, "BT", 2) == 0) {
+        if (is_tx) {
+          sendMorseBuffer();
+        } else {
+          publishMessage();
+          Serial.write("\n");
+          clearBuffer();
+        }
+      }
+    } else if (checkIndex >= 1) {
+      if (strncmp(buffer, "K", 1) == 0) {
+        if (is_tx) {
+          sendMorseBuffer();
+          publishMessageBreak();
+        } else {
+          publishMessage();
+          Serial.write("\n\n");
+          publishMessageBreak();
+          clearBuffer();
+        }
+      }
+    }
+  }
 }
