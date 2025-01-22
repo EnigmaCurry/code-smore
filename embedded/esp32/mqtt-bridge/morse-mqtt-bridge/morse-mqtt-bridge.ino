@@ -1,6 +1,6 @@
 // ESP32 Morse Code MQTT transceiver  
 
-// Set your WiFi credentials and MQTT settings in secrets.h
+// Set your WiFi credentials and MQTT settings in secrets.h (see secrets.example.h)
 // This controller will publish to the following MQTT topics based on your root topic name:
 ///  {MQTT_TOPIC_ROOT}/rx_stream    - the stream of morse code letters received
 ///  {MQTT_TOPIC_ROOT}/rx_message  - complete messages received split by prosign or timeout
