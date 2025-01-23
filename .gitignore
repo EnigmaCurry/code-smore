@@ -4,3 +4,5 @@ licenses.json
 /_test
 /*.profraw
 /*.profdata
+secrets.h
+*.key
