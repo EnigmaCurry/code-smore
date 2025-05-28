@@ -1,5 +1,6 @@
 set export
 
+set shell := ["bash", "-cu"]
 current_dir := `pwd`
 RUST_LOG := "debug"
 RUST_BACKTRACE := "1"
