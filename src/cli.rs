@@ -55,6 +55,15 @@ pub fn app() -> Command {
                 ),
         )
         .arg(
+            Arg::new("rts")
+                .long("rts")
+                .global(true)
+                .num_args(1)
+                .value_name("PORT")
+                .conflicts_with("gpio")
+                .help("Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)")
+        )
+        .arg(
             Arg::new("gpio")
                 .long("gpio")
                 .global(true)

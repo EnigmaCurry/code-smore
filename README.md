@@ -38,6 +38,7 @@ Options:
       --tone <TONE_FREQ>    Sets the tone frequency in Hz [default: 440.0]
       --text                Output text rather than sound
       --sound               Output sound in addition to the --text option
+      --rts <PORT>          Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)
       --gpio <pin-number>   Use GPIO instead of the sound device (select GPIO pin number)
   -h, --help                Print help
   -V, --version             Print version
@@ -139,6 +140,14 @@ Encode text and playback as separate steps in a pipeline, playback at 10WPM:
 ```
 ## --morse expects text to already be morse encoded:
 $ echo "Hello World" | code-smore send --text | code-smore send --morse --wpm 10
+```
+
+You may want to control your ham rig via [digirig
+mobile](https://digirig.net/) at the same time morse code is playing.
+That's what `--rts` is for:
+
+```
+code-smore send --rts /dev/ttyUSB0
 ```
 
 To encode plain text and send it as morse code to GPIO pin 4 (no sound):
