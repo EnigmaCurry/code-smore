@@ -329,7 +329,7 @@ impl MorsePlayer {
     }
 
     #[cfg(not(feature = "audio"))]
-    pub fn play_gap(&self, _dot_duration: u32) {
+    pub fn play_gap(&self, _dot_duration: u32, rts_port: Option<&str>) {
         error!("'audio' feature is disabled in this Cargo build. Program cannot play audio.");
     }
 
