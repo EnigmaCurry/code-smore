@@ -7,6 +7,8 @@ use regex::Regex;
 use std::thread;
 use std::time::Instant;
 
+const DEBOUNCE_MS: u32 = 15;
+
 pub fn listen_with_alsa(
     device_name: &str,
     tone_freq: f32,
@@ -17,7 +19,6 @@ pub fn listen_with_alsa(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let pcm = PCM::new(device_name, Direction::Capture, false)?;
 
-    // Set hardware parameters
     {
         let hwp = HwParams::any(&pcm)?;
         hwp.set_channels(1)?;
@@ -48,21 +49,13 @@ pub fn listen_with_alsa(
     loop {
         match io.readi(&mut buffer) {
             Ok(_) => {
-                // Convert f32 -> f64
                 let input: Vec<f64> = buffer.iter().map(|&s| s as f64 / i16::MAX as f64).collect();
-                ///TODO: Filter this:
-                //let filtered = filter.apply(&input);
-                let filtered = input;
+                let filtered = filter.apply(&input);
 
-                // Compute tone energy
                 let mut sum = 0.0_f32;
-                let mut max: f32 = 0.0;
                 let mut count = 0;
-
                 for &s in &filtered {
-                    let abs = s.abs() as f32;
-                    sum += abs;
-                    max = max.max(abs);
+                    sum += s.abs() as f32;
                     count += 1;
                 }
 
@@ -71,6 +64,11 @@ pub fn listen_with_alsa(
 
                 let now = Instant::now();
                 let duration = now.duration_since(last_signal_change).as_millis() as u32;
+
+                // On tone-on transition, debounce short clicks
+                if tone_detected && !last_signal_state && duration < DEBOUNCE_MS {
+                    continue;
+                }
 
                 if tone_detected != last_signal_state {
                     decoder.signal_event(duration as u16, last_signal_state);
@@ -93,7 +91,6 @@ pub fn listen_with_alsa(
                     last_signal_change = now;
                 }
 
-                // Message complete timeout
                 if duration > 20 * dot_duration {
                     last_signal_change = now;
                     last_signal_state = false;
