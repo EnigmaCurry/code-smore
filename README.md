@@ -10,10 +10,19 @@ This is a morse code utility and practice tool.
 
 [Download the latest release for your platform.](https://github.com/EnigmaCurry/code-smore/releases/latest)
 
-Or install via cargo ([crates.io/crates/code-smore](https://crates.io/crates/code-smore)):
+## Build
+
+If you do not wish to install the precompiled version (or none is available for your platform), you may build it yourself via cargo ([crates.io/crates/code-smore](https://crates.io/crates/code-smore)):
 
 ```
-$ cargo install code-smore
+## Make sure to install rust and cargo dependencies:
+## https://rustup.rs/
+
+## (Linux only:) Install the device dependencies:
+## sudo apt install libasound2-dev libudev-dev
+
+## Download and Build code-smore source code:
+cargo install code-smore
 ```
 
 ## Usage
