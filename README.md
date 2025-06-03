@@ -172,13 +172,13 @@ your computer and it will decode morse code from them. (This is a work
 in progress and may only works with ideal conditions.)
 
 ```
-code-smore receive --wpm 20
+code-smore receive --listen --wpm 20
 ```
 
-code-smore will listen to the monitor of your default sound device in
-pipewire, so it should hear the same thing that you hear (You may also
-manually connect code-smore to any single application by using a
-pipewire patchbay tool like
+`code-smore receive --listen` will listen to the monitor of your
+default sound device in pipewire, so it should hear the same thing
+that you hear (You may also manually connect code-smore to any single
+application by using a pipewire patchbay tool like
 [helvum](https://gitlab.freedesktop.org/pipewire/helvum)). Use the
 `--wpm` argument to specify the expected (ballpark) rate of
 transmission.

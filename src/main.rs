@@ -182,11 +182,15 @@ fn main() {
             let morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
+            let listen = sub_matches
+                .get_one::<bool>("listen")
+                .copied()
+                .unwrap_or(false);
             if gpio {
                 // Receive from GPIO
                 gpio::gpio_receive(dot_duration, gpio_pin, *morse)
                     .expect("Unhandled SIGINT or other fault");
-            } else {
+            } else if listen {
                 // Receive from audio device
                 let device = sub_matches
                     .get_one::<String>("device")
@@ -223,6 +227,20 @@ fn main() {
                     error!("Sorry, the listen feature is only supported on Linux right now.");
                     std::process::exit(1);
                 }
+            } else {
+                // No valid input source specified
+                eprintln!("Error: You must specify an input method. Try one of:");
+                eprintln!("  --gpio <PIN>");
+                eprintln!("  --listen");
+                eprintln!("  --device <name> (not implemented yet)");
+                eprintln!("  --file <path>   (not implemented yet)");
+                println!();
+                cmd.find_subcommand_mut("receive")
+                    .expect("Missing 'receive' subcommand")
+                    .print_help()
+                    .unwrap();
+                println!();
+                std::process::exit(1);
             }
             0
         }

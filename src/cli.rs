@@ -158,7 +158,7 @@ pub fn app() -> Command {
         .subcommand(
             Command::new("receive")
                 .about(
-                    "Receive morse code from an audio device, audio file, or GPIO.",
+                    "Receive morse code from desktop audio monitor, a specific audio device, an audio file, or GPIO.",
                 )
                 .arg(
                     Arg::new("morse")
@@ -207,18 +207,25 @@ pub fn app() -> Command {
                         ),
                 )
                 .arg(
+                    Arg::new("listen")
+                        .long("listen")
+                        .help("Use PipeWire to receive morse code from default system audio monitor")
+                        .action(clap::ArgAction::SetTrue)
+                        .conflicts_with_all(["device", "file"]),
+                )
+                .arg(
                     Arg::new("file")
                         .short('f')
                         .long("file")
                         .help("Receive morse code from an audio file")
-                        .conflicts_with("device"), // Ensures `--file` and `--device` are mutually exclusive
+                        .conflicts_with_all(["device", "listen"]),
                 )
                 .arg(
                     Arg::new("device")
                         .short('d')
                         .long("device")
                         .help("Receive morse code from an audio device")
-                        .conflicts_with("file"), // Ensures `--device` and `--file` are mutually exclusive
+                        .conflicts_with_all(["file", "listen"]),
                 ),
         )
         .subcommand(
