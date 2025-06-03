@@ -13,11 +13,11 @@ This is a morse code utility and practice tool.
 Or install via cargo ([crates.io/crates/code-smore](https://crates.io/crates/code-smore)):
 
 ```
-## Install rust and cargo dependencies:
+## Make sure to install rust and cargo dependencies:
 ## https://rustup.rs/
 
-## (Linux only:) Install the ALSA dev dependencies:
-## sudo apt install libasound2-dev
+## (Linux only:) Install the device dependencies:
+## sudo apt install libasound2-dev libudev-dev
 
 ## Download and Build code-smore source code:
 cargo install code-smore
