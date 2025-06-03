@@ -250,8 +250,8 @@ pub fn play_morse_code(
 ) -> anyhow::Result<()> {
     // If requested, open the port and assert RTS.
     // The guard lives until the end of the function.
-    let rts_lead_in = Duration::from_millis(50);
-    let rts_hold_after = Duration::from_millis(50);
+    let rts_lead_in = Duration::from_millis(500);
+    let rts_hold_after = Duration::from_millis(500);
     let _rts = match rts_port {
         Some(port_name) => {
             let guard = RtsGuard::new(port_name)?;
