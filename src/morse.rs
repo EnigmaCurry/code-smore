@@ -238,21 +238,28 @@ impl Drop for RtsGuard {
 }
 
 /// Play a sequence of (frequency, duration_ms) via the given Sink.
-/// If `rts_port` is `Some("/dev/ttyUSB0")` it will raise RTS for the
-/// entire duration of the playback, then lower it at the end.
+/// If `rts_port` is set, RTS will be asserted slightly before playback
+/// and deasserted slightly after playback finishes.
 #[cfg(feature = "audio")]
 pub fn play_morse_code(
     tones: Vec<(f32, u32)>,
     sink: &Sink,
     rts_port: Option<&str>,
+    // rts_lead_in: Duration,
+    // rts_hold_after: Duration,
 ) -> anyhow::Result<()> {
     // If requested, open the port and assert RTS.
-    // The guard lives until end of this function (i.e. until after playback).
+    // The guard lives until the end of the function.
+    let rts_lead_in = Duration::from_millis(50);
+    let rts_hold_after = Duration::from_millis(50);
     let _rts = match rts_port {
-        Some(port_name) => Some(RtsGuard::new(port_name)?),
+        Some(port_name) => {
+            let guard = RtsGuard::new(port_name)?;
+            std::thread::sleep(rts_lead_in); // give RTS time to settle
+            Some(guard)
+        }
         None => None,
     };
-
     let sample_rate = 44_100;
     for (freq, duration) in tones {
         sink.append(Tone {
@@ -262,11 +269,13 @@ pub fn play_morse_code(
             current_sample: 0,
         });
     }
-
     // block current thread until playback finishes
     sink.sleep_until_end();
-
-    // _rts goes out of scope here, dropping RtsGuard and de-asserting RTS
+    // keep RTS asserted for a bit after tones end
+    if _rts.is_some() {
+        std::thread::sleep(rts_hold_after);
+    }
+    // _rts is dropped here, deasserting RTS
     Ok(())
 }
 
