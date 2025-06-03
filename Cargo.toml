@@ -40,13 +40,17 @@ serialport = "4.7.2"
 anyhow = "1.0.98"
 
 [features]
-audio = ["rodio"]
+audio = ["dep:rodio"]
 pipewire = ["dep:pipewire"]
-gpio = ["rppal"]
+gpio = ["dep:rppal"]
 default = ["audio", "gpio"]
 
 [target.'cfg(target_os = "linux")'.dependencies]
+alsa = { version = "0.9.1" }
 pipewire = { version = "0.8.0", optional = true }
+
+[target.'cfg(target_os = "linux")'.features]
+audio = ["alsa"]
 
 [dev-dependencies]
 shell-words = "1.1.0"

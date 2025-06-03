@@ -320,6 +320,7 @@ checksum = "4bfbf56724aa9eca8afa4fcfadeb479e722935bb2a0900c2d37e0cc477af0688"
 name = "code-smore"
 version = "0.1.34"
 dependencies = [
+ "alsa",
  "anyhow",
  "bytemuck",
  "chrono",

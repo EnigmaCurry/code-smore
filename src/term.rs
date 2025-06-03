@@ -48,10 +48,12 @@ pub fn log_message(message: &Message) {
     }
 
     // Print the rest of the wrapped lines
-    for line in &wrapped_lines[1..] {
+    if wrapped_lines.is_empty() {
+        return;
+    }
+    for line in wrapped_lines.iter().skip(1) {
         println!("{}", line);
     }
-
     // Print an empty line at the end
     println!();
 }

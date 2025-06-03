@@ -1,5 +1,6 @@
 use clap_complete::shells::Shell;
 
+mod alsa;
 mod cli;
 mod credits;
 mod fecr_quiz;
@@ -186,35 +187,24 @@ fn main() {
                 .get_one::<bool>("listen")
                 .copied()
                 .unwrap_or(false);
+            let threshold = sub_matches
+                .get_one::<f32>("threshold")
+                .copied()
+                .unwrap_or(0.3);
+            let bandwidth = sub_matches
+                .get_one::<f32>("bandwidth")
+                .copied()
+                .unwrap_or(200.0);
             if gpio {
                 // Receive from GPIO
                 gpio::gpio_receive(dot_duration, gpio_pin, *morse)
                     .expect("Unhandled SIGINT or other fault");
             } else if listen {
                 // Receive from audio device
-                let device = sub_matches
-                    .get_one::<String>("device")
-                    .map(|s| s.to_string());
                 let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
-                let threshold = sub_matches
-                    .get_one::<f32>("threshold")
-                    .copied()
-                    .unwrap_or(0.3);
-                let bandwidth = sub_matches
-                    .get_one::<f32>("bandwidth")
-                    .copied()
-                    .unwrap_or(200.0);
-                match (&device, &file) {
-                    (None, Some(_file)) => {
+                match &file {
+                    Some(_file) => {
                         error!("TODO. Audio file input is not supported yet.");
-                        std::process::exit(1);
-                    }
-                    (Some(_device), None) => {
-                        error!("TODO. Setting the input device name is not supported yet. Leave this setting unset to use the default device.");
-                        std::process::exit(1);
-                    }
-                    (Some(_device), Some(_file)) => {
-                        error!("Cannot specify --device and --file simultaneousy.");
                         std::process::exit(1);
                     }
                     _ => {}
@@ -227,12 +217,33 @@ fn main() {
                     error!("Sorry, the listen feature is only supported on Linux right now.");
                     std::process::exit(1);
                 }
+            } else if let Some(device_name) = sub_matches
+                .get_one::<String>("device")
+                .filter(|s| !s.is_empty())
+            {
+                #[cfg(target_os = "linux")]
+                {
+                    alsa::listen_with_alsa(
+                        device_name,
+                        tone_freq,
+                        bandwidth,
+                        threshold,
+                        dot_duration,
+                        *morse,
+                    )
+                    .expect("alsa::listen_with_alsa() failed");
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    error!("Audio device input is not supported on this platform.");
+                    std::process::exit(1);
+                }
             } else {
                 // No valid input source specified
                 eprintln!("Error: You must specify an input method. Try one of:");
                 eprintln!("  --gpio <PIN>");
                 eprintln!("  --listen");
-                eprintln!("  --device <name> (not implemented yet)");
+                eprintln!("  --device <name>");
                 eprintln!("  --file <path>   (not implemented yet)");
                 println!();
                 cmd.find_subcommand_mut("receive")
