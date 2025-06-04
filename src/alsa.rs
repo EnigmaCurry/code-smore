@@ -1,7 +1,6 @@
 use crate::{filter::BandpassFilter, message::Message, morse::text_to_morse, term::log_message};
 use alsa::pcm::{Access, Format, HwParams, State};
 use alsa::{Direction, PCM};
-use chrono::Local;
 use morse_codec::decoder::Decoder;
 use regex::Regex;
 use std::sync::mpsc::Sender;
