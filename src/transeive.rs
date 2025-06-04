@@ -4,7 +4,7 @@ use crate::{alsa::listen_with_alsa, morse::MorsePlayer};
 use chrono::Local;
 use crossterm::{
     cursor::{Hide, MoveTo},
-    event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
@@ -75,13 +75,13 @@ pub fn run_transeiver(
                 // ─── 5.a) Preview update ─────────────────────────────
                 // If this is the first preview of a new message, push a new entry.
                 if !building {
-                    let timestamp = Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
                     log.push(format!("[{timestamp}] {partial}"));
                     building = true;
                 } else {
                     // Overwrite the last entry in `log` in place.
                     if let Some(last) = log.last_mut() {
-                        let timestamp = Local::now().format("%H:%M:%S").to_string();
+                        let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
                         *last = format!("[{timestamp}] {partial}");
                     }
                 }
@@ -91,7 +91,7 @@ pub fn run_transeiver(
             } else {
                 // ─── 5.b) Final message ───────────────────────────────
                 // If we were building, overwrite that same last entry:
-                let timestamp = Local::now().format("%H:%M:%S").to_string();
+                let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
                 if building {
                     if let Some(last) = log.last_mut() {
                         *last = format!("[{timestamp}] {raw}");
@@ -146,8 +146,13 @@ pub fn run_transeiver(
         if poll(Duration::from_millis(50)).unwrap() {
             if let Event::Key(key_event) = read().unwrap() {
                 match key_event.code {
-                    KeyCode::Char(c) => {
-                        input.push(c);
+                    KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                        // Exit on Ctrl-C
+                        break;
+                    }
+                    KeyCode::Esc => {
+                        // Exit on ESC
+                        break;
                     }
                     KeyCode::Backspace => {
                         input.pop();
@@ -166,9 +171,8 @@ pub fn run_transeiver(
                         }
                         input.clear();
                     }
-                    KeyCode::Esc => {
-                        // Exit on ESC
-                        break;
+                    KeyCode::Char(c) => {
+                        input.push(c);
                     }
                     _ => {}
                 }
