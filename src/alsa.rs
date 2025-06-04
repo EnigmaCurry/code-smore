@@ -1,4 +1,4 @@
-use crate::{filter::BandpassFilter, message::Message, morse::text_to_morse, term::log_message};
+use crate::{filter::BandpassFilter, message::Message, morse::text_to_morse};
 use alsa::pcm::{Access, Format, HwParams, State};
 use alsa::{Direction, PCM};
 use morse_codec::decoder::Decoder;
@@ -47,10 +47,6 @@ pub fn listen_with_alsa(
     let mut message_log = Vec::new();
     let whitespace_regex = Regex::new(r"\s+").unwrap();
 
-    if tx.is_none() {
-        crate::term::clear_screen();
-    }
-
     loop {
         match io.readi(&mut buffer) {
             Ok(_) => {
@@ -86,20 +82,6 @@ pub fn listen_with_alsa(
                         }
                     }
 
-                    if !msg.is_empty() {
-                        crate::term::clear_screen();
-                        for m in &message_log {
-                            log_message(m, tx.is_none());
-                        }
-                        if tx.is_none() {
-                            if output_morse {
-                                println!("{}", text_to_morse(&msg));
-                            } else {
-                                println!("{msg}");
-                            }
-                        }
-                    }
-
                     last_signal_state = tone_detected;
                     last_signal_change = now;
                 }
@@ -128,21 +110,6 @@ pub fn listen_with_alsa(
                             if !m.content.trim().is_empty() {
                                 let _ = tx.send(m.content.clone());
                             }
-                        } else {
-                            crate::term::clear_screen();
-                            for m in &message_log {
-                                log_message(m, tx.is_none());
-                            }
-
-                            if tx.is_none() {
-                                if output_morse {
-                                    println!("{}", &m.content);
-                                } else {
-                                    println!("{msg}");
-                                }
-                            }
-
-                            log_message(&m, tx.is_none());
                         }
 
                         message_log.push(m.clone());

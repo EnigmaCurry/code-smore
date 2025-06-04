@@ -10,7 +10,6 @@ mod message;
 mod morse;
 mod pipewire;
 mod prelude;
-mod term;
 mod transeive;
 
 use is_terminal::IsTerminal;

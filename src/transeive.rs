@@ -1,6 +1,6 @@
 // src/transeive.rs
 
-use crate::{alsa::listen_with_alsa, message::Message, morse::MorsePlayer, term::log_message};
+use crate::{alsa::listen_with_alsa, message::Message, morse::MorsePlayer};
 use chrono::Local;
 use crossterm::{
     cursor::{Hide, MoveTo},
@@ -72,37 +72,16 @@ pub fn run_transeiver(
         let mut need_full_log_redraw = false;
         while let Ok(raw) = rx.try_recv() {
             if let Some(partial) = raw.strip_prefix(":typing:") {
-                // ─── 5.a) Preview update ─────────────────────────────
-                // If this is the first preview of a new message, push a new entry.
-                if !building {
-                    let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
-                    log.push(format!("[{timestamp}] {partial}"));
-                    building = true;
-                } else {
-                    // Overwrite the last entry in `log` in place.
-                    if let Some(last) = log.last_mut() {
-                        let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
-                        *last = format!("[{timestamp}] {partial}");
-                    }
-                }
                 last_preview = partial.to_string();
-                // We do NOT set need_full_log_redraw = true here,
-                // because we only need to redraw that one preview row.
+                building = true;
             } else {
                 // ─── 5.b) Final message ───────────────────────────────
                 // If we were building, overwrite that same last entry:
                 let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
-                if building {
-                    if let Some(last) = log.last_mut() {
-                        *last = format!("[{timestamp}] {raw}");
-                    }
-                } else {
-                    // If no preview was in progress, just push a new line:
-                    log.push(format!("[{timestamp}] {raw}"));
-                }
+                log.push(format!("[{timestamp}] {raw}"));
                 building = false;
                 last_preview.clear();
-                need_full_log_redraw = true; // the log changed shape/length
+                need_full_log_redraw = true;
             }
         }
 
@@ -159,13 +138,13 @@ pub fn run_transeiver(
                     }
                     KeyCode::Enter => {
                         let message = input.trim();
-                        let m = Message {
-                            timestamp: chrono::Local::now()
-                                .format("%y-%m-%d %H:%M:%S %p")
-                                .to_string(),
-                            content: message.to_string(),
-                        };
-                        log_message(&m, false);
+                        // let m = Message {
+                        //     timestamp: chrono::Local::now()
+                        //         .format("%y-%m-%d %H:%M:%S %p")
+                        //         .to_string(),
+                        //     content: message.to_string(),
+                        // };
+
                         if !message.is_empty() {
                             player.play(
                                 message,
