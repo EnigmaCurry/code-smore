@@ -14,6 +14,8 @@ mod term;
 
 use is_terminal::IsTerminal;
 use prelude::*;
+use rodio::cpal::traits::HostTrait;
+use rodio::DeviceTrait;
 use std::io::BufRead;
 use std::u8;
 
@@ -24,7 +26,14 @@ use crate::{credits::print_credits, morse::text_to_morse};
 fn main() {
     let mut cmd = cli::app();
     let matches = cmd.clone().get_matches();
+    let sound_device = matches
+        .get_one::<String>("sound-device")
+        .map(|s| s.as_str());
     let rts_port = matches.get_one::<String>("rts").map(|s| s.as_str());
+    let rigctl_port = matches.get_one::<String>("rigctl").map(|s| s.as_str());
+    let rigctl_model = matches
+        .get_one::<String>("rigctl-model")
+        .map(|s| s.as_str());
 
     // Configure logging:
     let log_level = if matches.get_flag("verbose") {
@@ -101,19 +110,56 @@ fn main() {
                 *calibration_mode,
                 *baseline,
                 rts_port,
+                rigctl_port,
+                rigctl_model,
             );
             0
         }
         Some(("test-sound", _sub_matches)) => {
-            let player = morse::MorsePlayer::new();
+            let player;
+            match sound_device {
+                Some(device) => {
+                    player = morse::MorsePlayer::new_with_device(
+                        sound_device.expect("Could not get sound device"),
+                    )
+                    .expect("Could not initialize player")
+                }
+                None => player = morse::MorsePlayer::new(),
+            }
+
             let message = "If sound is working, you should hear this test message now.";
             println!("{}", message);
             println!("{}", text_to_morse(message));
-            player.play(message, dot_duration, tone_freq, rts_port);
+            player.play(
+                message,
+                dot_duration,
+                tone_freq,
+                rts_port,
+                rigctl_port,
+                rigctl_model,
+            );
+            0
+        }
+        Some(("list-sound-devices", _sub_matches)) => {
+            let host = rodio::cpal::default_host();
+
+            println!("--- Output Devices ---");
+            for device in host.output_devices().expect("could not get output devices") {
+                println!(" - {}", device.name().expect("no device name"));
+            }
             0
         }
         Some(("send", sub_matches)) => {
-            let player = morse::MorsePlayer::new();
+            let player;
+            match sound_device {
+                Some(device) => {
+                    player = morse::MorsePlayer::new_with_device(
+                        sound_device.expect("Could not get sound device"),
+                    )
+                    .expect("Could not initialize player")
+                }
+                None => player = morse::MorsePlayer::new(),
+            }
             let morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
@@ -134,8 +180,20 @@ fn main() {
                                 // stdin is already morse encoded, convert it to text:
                                 println!("{}", morse::code_to_text(&line));
                                 if sound {
-                                    player.play_morse(&line, dot_duration, tone_freq, rts_port);
-                                    player.play_gap(dot_duration * 14, rts_port);
+                                    player.play_morse(
+                                        &line,
+                                        dot_duration,
+                                        tone_freq,
+                                        rts_port,
+                                        rigctl_port,
+                                        rigctl_model,
+                                    );
+                                    player.play_gap(
+                                        dot_duration * 14,
+                                        rts_port,
+                                        rigctl_port,
+                                        rigctl_model,
+                                    );
                                 } else if gpio {
                                     player.gpio_morse(&line, dot_duration, gpio_pin);
                                     player.gpio_gap(dot_duration * 14, gpio_pin);
@@ -144,8 +202,20 @@ fn main() {
                                 // Encode stdin as morse code:
                                 println!("{}", morse::text_to_morse(&line));
                                 if sound {
-                                    player.play(&line, dot_duration, tone_freq, rts_port);
-                                    player.play_gap(dot_duration * 14, rts_port);
+                                    player.play(
+                                        &line,
+                                        dot_duration,
+                                        tone_freq,
+                                        rts_port,
+                                        rigctl_port,
+                                        rigctl_model,
+                                    );
+                                    player.play_gap(
+                                        dot_duration * 14,
+                                        rts_port,
+                                        rigctl_port,
+                                        rigctl_model,
+                                    );
                                 } else if gpio {
                                     player.gpio(&line, dot_duration, gpio_pin);
                                     player.gpio_gap(dot_duration * 14, gpio_pin);
@@ -158,8 +228,20 @@ fn main() {
                                 player.gpio_gap(dot_duration * 14, gpio_pin);
                             } else {
                                 // Sound is the default:
-                                player.play_morse(&line, dot_duration, tone_freq, rts_port);
-                                player.play_gap(dot_duration * 14, rts_port);
+                                player.play_morse(
+                                    &line,
+                                    dot_duration,
+                                    tone_freq,
+                                    rts_port,
+                                    rigctl_port,
+                                    rigctl_model,
+                                );
+                                player.play_gap(
+                                    dot_duration * 14,
+                                    rts_port,
+                                    rigctl_port,
+                                    rigctl_model,
+                                );
                             }
                         } else {
                             // Convert stdin into morse and play it:
@@ -168,8 +250,20 @@ fn main() {
                                 player.gpio_gap(dot_duration * 14, gpio_pin);
                             } else {
                                 // Sound is the default:
-                                player.play(&line, dot_duration, tone_freq, rts_port);
-                                player.play_gap(dot_duration * 14, rts_port);
+                                player.play(
+                                    &line,
+                                    dot_duration,
+                                    tone_freq,
+                                    rts_port,
+                                    rigctl_port,
+                                    rigctl_model,
+                                );
+                                player.play_gap(
+                                    dot_duration * 14,
+                                    rts_port,
+                                    rigctl_port,
+                                    rigctl_model,
+                                );
                             }
                         }
                     }

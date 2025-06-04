@@ -34,23 +34,28 @@ $ code-smore
 Usage: code-smore [OPTIONS] [COMMAND]
 
 Commands:
-  fecr-quiz   Start the Fast Enough Character Recognition quiz
-  test-sound  Test that sound is working
-  send        Send text from stdin as morse code
-  receive     Receive morse code from an audio device, audio file, or GPIO.
-  credits     Prints license information for all dependencies
-  help        Print this message or the help of the given subcommand(s)
+  fecr-quiz           Start the Fast Enough Character Recognition quiz
+  test-sound          Test that sound is working
+  list-sound-devices  List all system sound devices
+  send                Send text from stdin as morse code
+  receive             Receive morse code from desktop audio monitor, a specific audio device, an audio file, or GPIO.
+  credits             Prints license information for all dependencies
+  help                Print this message or the help of the given subcommand(s)
 
 Options:
-      --dot <DOT_DURATION>  Sets the dot duration in milliseconds [default: 60]
-      --wpm <WPM>           Sets the speed in words per minute [default: 20]
-      --tone <TONE_FREQ>    Sets the tone frequency in Hz [default: 440.0]
-      --text                Output text rather than sound
-      --sound               Output sound in addition to the --text option
-      --rts <PORT>          Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)
-      --gpio <pin-number>   Use GPIO instead of the sound device (select GPIO pin number)
-  -h, --help                Print help
-  -V, --version             Print version
+      --dot <DOT_DURATION>     Sets the dot duration in milliseconds [default: 60]
+      --wpm <WPM>              Sets the speed in words per minute [default: 20]
+      --tone <TONE_FREQ>       Sets the tone frequency in Hz [default: 440.0]
+      --text                   Output text rather than sound
+      --sound                  Output sound in addition to the --text option
+      --sound-device <DEVICE>  Choose an explicit sound device instead of the system default
+      --rts <PORT>             Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)
+      --rigctl <DEVICE>        Control radio PTT via Hamlib rigctl device (e.g. /dev/ttyACM0)
+      --rigctl-model <ID>      Hamlib rig model ID (e.g. 3085 for IC-705, see `rigctl -l`)
+      --gpio <pin-number>      Use GPIO instead of the sound device (select GPIO pin number)
+  -h, --help                   Print help
+  -V, --version                Print version
+
 ```
 
 Note that `--dot` and `--wpm` are mutually exclusive, you may only set

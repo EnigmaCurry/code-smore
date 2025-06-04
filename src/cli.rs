@@ -55,13 +55,40 @@ pub fn app() -> Command {
                 ),
         )
         .arg(
+            Arg::new("sound-device")
+                .long("sound-device")
+                .global(true)
+                .num_args(1)
+                .value_name("DEVICE")
+                .help("Choose an explicit sound device instead of the system default")
+        )
+        .arg(
             Arg::new("rts")
                 .long("rts")
                 .global(true)
                 .num_args(1)
                 .value_name("PORT")
-                .conflicts_with("gpio")
+                .conflicts_with_all(["gpio", "rigctl"])
                 .help("Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)")
+        )
+        .arg(
+            Arg::new("rigctl")
+                .long("rigctl")
+                .global(true)
+                .num_args(1)
+                .value_name("DEVICE")
+                .requires("rigctl-model")
+                .conflicts_with_all(["gpio", "rts"])
+                .help("Control radio PTT via Hamlib rigctl device (e.g. /dev/ttyACM0)")
+        )
+        .arg(
+            Arg::new("rigctl-model")
+                .long("rigctl-model")
+                .global(true)
+                .num_args(1)
+                .requires("rigctl")
+                .value_name("ID")
+                .help("Hamlib rig model ID (e.g. 3085 for IC-705, see `rigctl -l`)")
         )
         .arg(
             Arg::new("gpio")
@@ -69,6 +96,7 @@ pub fn app() -> Command {
                 .global(true)
                 .value_parser(clap::value_parser!(u8))
                 .value_name("pin-number")
+                .conflicts_with_all(["rts", "rigctl"])
                 .help(
                     "Use GPIO instead of the sound device (select GPIO pin number)",
                 ),
@@ -140,6 +168,9 @@ pub fn app() -> Command {
         )
         .subcommand(Command::new("test-sound").about(
             "Test that sound is working",
+        ))
+        .subcommand(Command::new("list-sound-devices").about(
+            "List all system sound devices",
         ))
         .subcommand(
             Command::new("send")
