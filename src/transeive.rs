@@ -1,6 +1,6 @@
 // src/transeive.rs
 
-use crate::{alsa::listen_with_alsa, message::Message, morse::MorsePlayer};
+use crate::{alsa::listen_with_alsa, morse::MorsePlayer};
 use chrono::Local;
 use crossterm::{
     cursor::{Hide, MoveTo},
@@ -11,12 +11,22 @@ use crossterm::{
         LeaveAlternateScreen,
     },
 };
+use std::io::Stdout;
 use std::{
     io::{stdout, Write},
     sync::mpsc,
     thread,
     time::Duration,
 };
+
+fn redraw_log(stdout: &mut Stdout, log: &Vec<String>, max_log_rows: usize) {
+    execute!(stdout, MoveTo(0, 0), Clear(ClearType::FromCursorDown)).unwrap();
+    let start = log.len().saturating_sub(max_log_rows);
+    for (i, line) in log.iter().skip(start).enumerate() {
+        execute!(stdout, MoveTo(0, i as u16)).unwrap();
+        print!("{line}");
+    }
+}
 
 /// A “half-duplex” TUI: top area is the log, one row from the bottom is
 /// the “preview” (updated character by character), and the bottom row
@@ -78,7 +88,7 @@ pub fn run_transeiver(
                 // ─── 5.b) Final message ───────────────────────────────
                 // If we were building, overwrite that same last entry:
                 let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
-                log.push(format!("[{timestamp}] {raw}"));
+                log.push(format!("[{timestamp}] > {raw}"));
                 building = false;
                 last_preview.clear();
                 need_full_log_redraw = true;
@@ -88,13 +98,7 @@ pub fn run_transeiver(
         // ─── 6) Redraw the “log” area if needed ───────────────────────────────
         let current_log_len = log.len();
         if need_full_log_redraw || current_log_len != last_log_len {
-            // Clear all rows from 0 through preview_row-1, then reprint.
-            execute!(stdout, MoveTo(0, 0), Clear(ClearType::FromCursorDown)).unwrap();
-            let start = log.len().saturating_sub(max_log_rows);
-            for (i, line) in log.iter().skip(start).enumerate() {
-                execute!(stdout, MoveTo(0, i as u16)).unwrap();
-                print!("{line}");
-            }
+            redraw_log(&mut stdout, &log, max_log_rows);
             last_log_len = log.len();
         }
 
@@ -107,7 +111,6 @@ pub fn run_transeiver(
         )
         .unwrap();
         if building && !last_preview.is_empty() {
-            // Print a dimmed line like "[...] AI7XP T"
             print!("\x1b[2m[...]{last_preview}\x1b[22m");
         }
 
@@ -118,7 +121,7 @@ pub fn run_transeiver(
             Clear(ClearType::CurrentLine)
         )
         .unwrap();
-        print!("> {input}");
+        print!("< {input}");
         stdout.flush().unwrap();
 
         // ─── 9) Handle user keystrokes ────────────────────────────────────────
@@ -138,14 +141,16 @@ pub fn run_transeiver(
                     }
                     KeyCode::Enter => {
                         let message = input.trim();
-                        // let m = Message {
-                        //     timestamp: chrono::Local::now()
-                        //         .format("%y-%m-%d %H:%M:%S %p")
-                        //         .to_string(),
-                        //     content: message.to_string(),
-                        // };
-
                         if !message.is_empty() {
+                            execute!(
+                                stdout,
+                                MoveTo(0, preview_row as u16),
+                                Clear(ClearType::CurrentLine)
+                            )
+                            .unwrap();
+                            print!("\x1b[2m[...sending \"{message}\"]\x1b[22m");
+                            stdout.flush().unwrap();
+
                             player.play(
                                 message,
                                 dot_duration,
@@ -154,6 +159,11 @@ pub fn run_transeiver(
                                 rigctl_port,
                                 rigctl_model,
                             );
+
+                            let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
+                            log.push(format!("[{timestamp}] < {message}"));
+                            redraw_log(&mut stdout, &log, max_log_rows);
+                            last_log_len = log.len(); // force re-render if the log fills up
                         }
                         input.clear();
                     }
