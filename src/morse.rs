@@ -397,9 +397,9 @@ impl MorsePlayer {
     pub fn play_gap(
         &self,
         dot_duration: u32,
-        rts_port: Option<&str>,
-        rigctl_port: Option<&str>,
-        rigctl_model: Option<&str>,
+        _rts_port: Option<&str>,
+        _rigctl_port: Option<&str>,
+        _rigctl_model: Option<&str>,
     ) {
         let tones = vec![(0.0, dot_duration)];
         let sink = Sink::try_new(&self.stream_handle).unwrap();

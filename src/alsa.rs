@@ -4,6 +4,7 @@ use alsa::{Direction, PCM};
 use chrono::Local;
 use morse_codec::decoder::Decoder;
 use regex::Regex;
+use std::sync::mpsc::Sender;
 use std::thread;
 use std::time::Instant;
 
@@ -16,6 +17,7 @@ pub fn listen_with_alsa(
     threshold: f32,
     dot_duration: u32,
     output_morse: bool,
+    tx: Option<Sender<String>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let pcm = PCM::new(device_name, Direction::Capture, false)?;
 
@@ -114,12 +116,17 @@ pub fn listen_with_alsa(
                             m.content = text_to_morse(&m.content);
                         }
                         log_message(&m);
-                        message_log.push(m);
+                        message_log.push(m.clone());
                         decoder.message.clear();
+
+                        //Send incoming message to the UI thread:
+                        if let Some(ref tx) = tx {
+                            let _ = tx.send(m.content.clone());
+                        }
                     }
                 }
             }
-            Err(err) if pcm.state() == State::XRun => {
+            Err(_err) if pcm.state() == State::XRun => {
                 eprintln!("Overrun detected");
                 pcm.prepare()?;
             }

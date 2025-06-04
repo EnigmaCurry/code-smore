@@ -55,8 +55,8 @@ pub fn app() -> Command {
                 ),
         )
         .arg(
-            Arg::new("sound-device")
-                .long("sound-device")
+            Arg::new("device")
+                .long("device")
                 .global(true)
                 .num_args(1)
                 .value_name("DEVICE")
@@ -169,7 +169,7 @@ pub fn app() -> Command {
         .subcommand(Command::new("test-sound").about(
             "Test that sound is working",
         ))
-        .subcommand(Command::new("list-sound-devices").about(
+        .subcommand(Command::new("list-devices").about(
             "List all system sound devices",
         ))
         .subcommand(
@@ -258,6 +258,18 @@ pub fn app() -> Command {
                         .help("Receive morse code from an audio device")
                         .conflicts_with_all(["file", "listen"]),
                 ),
+        )
+        .subcommand(
+            Command::new("transeive")
+                .about("Interactive half-duplex send/receive session")
+                .arg(
+                    Arg::new("device")
+                        .short('d')
+                        .long("device")
+                        .required(true)
+                        .value_name("ALSA_DEVICE")
+                        .help("ALSA device to receive morse from"),
+                )
         )
         .subcommand(
             Command::new("completions")

@@ -11,6 +11,7 @@ mod morse;
 mod pipewire;
 mod prelude;
 mod term;
+mod transeive;
 
 use is_terminal::IsTerminal;
 use prelude::*;
@@ -26,9 +27,7 @@ use crate::{credits::print_credits, morse::text_to_morse};
 fn main() {
     let mut cmd = cli::app();
     let matches = cmd.clone().get_matches();
-    let sound_device = matches
-        .get_one::<String>("sound-device")
-        .map(|s| s.as_str());
+    let device = matches.get_one::<String>("device").map(|s| s.as_str());
     let rts_port = matches.get_one::<String>("rts").map(|s| s.as_str());
     let rigctl_port = matches.get_one::<String>("rigctl").map(|s| s.as_str());
     let rigctl_model = matches
@@ -117,12 +116,10 @@ fn main() {
         }
         Some(("test-sound", _sub_matches)) => {
             let player;
-            match sound_device {
-                Some(device) => {
-                    player = morse::MorsePlayer::new_with_device(
-                        sound_device.expect("Could not get sound device"),
-                    )
-                    .expect("Could not initialize player")
+            match device {
+                Some(dev) => {
+                    player = morse::MorsePlayer::new_with_device(dev)
+                        .expect("Could not initialize player")
                 }
                 None => player = morse::MorsePlayer::new(),
             }
@@ -140,7 +137,7 @@ fn main() {
             );
             0
         }
-        Some(("list-sound-devices", _sub_matches)) => {
+        Some(("list-devices", _sub_matches)) => {
             let host = rodio::cpal::default_host();
 
             println!("--- Output Devices ---");
@@ -151,12 +148,10 @@ fn main() {
         }
         Some(("send", sub_matches)) => {
             let player;
-            match sound_device {
-                Some(device) => {
-                    player = morse::MorsePlayer::new_with_device(
-                        sound_device.expect("Could not get sound device"),
-                    )
-                    .expect("Could not initialize player")
+            match device {
+                Some(dev) => {
+                    player = morse::MorsePlayer::new_with_device(dev)
+                        .expect("Could not initialize player")
                 }
                 None => player = morse::MorsePlayer::new(),
             }
@@ -324,6 +319,7 @@ fn main() {
                         threshold,
                         dot_duration,
                         *morse,
+                        None,
                     )
                     .expect("alsa::listen_with_alsa() failed");
                 }
@@ -347,6 +343,20 @@ fn main() {
                 println!();
                 std::process::exit(1);
             }
+            0
+        }
+        Some(("transeive", sub_matches)) => {
+            let device = sub_matches
+                .get_one::<String>("device")
+                .expect("ALSA device required");
+            transeive::run_transeiver(
+                tone_freq,
+                dot_duration,
+                device,
+                rts_port,
+                rigctl_port,
+                rigctl_model,
+            );
             0
         }
         Some(("completions", sub_matches)) => {
