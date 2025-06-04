@@ -1,6 +1,6 @@
 // src/transeive.rs
 
-use crate::{alsa::listen_with_alsa, morse::MorsePlayer};
+use crate::{alsa::listen_with_alsa, message::Message, morse::MorsePlayer, term::log_message};
 use chrono::Local;
 use crossterm::{
     cursor::{Hide, MoveTo},
@@ -159,6 +159,13 @@ pub fn run_transeiver(
                     }
                     KeyCode::Enter => {
                         let message = input.trim();
+                        let m = Message {
+                            timestamp: chrono::Local::now()
+                                .format("%y-%m-%d %H:%M:%S %p")
+                                .to_string(),
+                            content: message.to_string(),
+                        };
+                        log_message(&m, false);
                         if !message.is_empty() {
                             player.play(
                                 message,

@@ -115,10 +115,7 @@ pub fn listen_with_alsa(
                     if !msg.is_empty() {
                         let m = Message {
                             timestamp: chrono::Local::now()
-                                .format(
-                                    "%y-%m-%d
-                        %H:%M:%S %p",
-                                )
+                                .format("%y-%m-%d %H:%M:%S %p")
                                 .to_string(),
                             content: if output_morse {
                                 text_to_morse(&msg)
