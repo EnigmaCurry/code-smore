@@ -63,13 +63,22 @@ pub fn app() -> Command {
                 .help("Choose an explicit sound device instead of the system default")
         )
         .arg(
-            Arg::new("rts")
-                .long("rts")
+            Arg::new("ptt-rts")
+                .long("ptt-rts")
                 .global(true)
                 .num_args(1)
                 .value_name("PORT")
                 .conflicts_with_all(["gpio", "rigctl"])
-                .help("Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)")
+                .help("Assert RTS on this serial port to trigger radio's PTT (e.g. /dev/ttyUSB0)")
+        )
+        .arg(
+            Arg::new("cw-rts")
+                .long("cw-rts")
+                .global(true)
+                .num_args(1)
+                .value_name("PORT")
+                .conflicts_with_all(["gpio", "rigctl"])
+                .help("Assert RTS on this serial port to key radio's CW (e.g. /dev/ttyUSB0)")
         )
         .arg(
             Arg::new("rigctl")
@@ -78,7 +87,7 @@ pub fn app() -> Command {
                 .num_args(1)
                 .value_name("DEVICE")
                 .requires("rigctl-model")
-                .conflicts_with_all(["gpio", "rts"])
+                .conflicts_with_all(["gpio", "ptt-rts"])
                 .help("Control radio PTT via Hamlib rigctl device (e.g. /dev/ttyACM0)")
         )
         .arg(
@@ -96,7 +105,7 @@ pub fn app() -> Command {
                 .global(true)
                 .value_parser(clap::value_parser!(u8))
                 .value_name("pin-number")
-                .conflicts_with_all(["rts", "rigctl"])
+                .conflicts_with_all(["ptt-rts", "rigctl"])
                 .help(
                     "Use GPIO instead of the sound device (select GPIO pin number)",
                 ),

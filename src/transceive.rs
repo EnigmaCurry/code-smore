@@ -36,7 +36,7 @@ pub fn run_transceiver(
     tone_freq: f32,
     dot_duration: u32,
     sound_device: &str,
-    rts_port: Option<&str>,
+    ptt_rts_port: Option<&str>,
     rigctl_port: Option<&str>,
     rigctl_model: Option<&str>,
 ) {
@@ -153,7 +153,7 @@ pub fn run_transceiver(
                                 message,
                                 dot_duration,
                                 tone_freq,
-                                rts_port,
+                                ptt_rts_port,
                                 rigctl_port,
                                 rigctl_model,
                             );

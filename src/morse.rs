@@ -242,13 +242,13 @@ impl Drop for RtsGuard {
 }
 
 /// Play a sequence of (frequency, duration_ms) via the given Sink.
-/// If `rts_port` is set, RTS will be asserted slightly before playback
+/// If `ptt_rts_port` is set, RTS will be asserted slightly before playback
 /// and deasserted slightly after playback finishes.
 #[cfg(feature = "audio")]
 pub fn play_morse_code(
     tones: Vec<(f32, u32)>,
     sink: &Sink,
-    rts_port: Option<&str>,
+    ptt_rts_port: Option<&str>,
     rigctl_port: Option<&str>,
     rigctl_model: Option<&str>,
 ) -> anyhow::Result<()> {
@@ -259,7 +259,7 @@ pub fn play_morse_code(
     let ptt_hold_after = Duration::from_millis(50);
 
     // If requested, assert RTS
-    let _rts = match rts_port {
+    let _rts = match ptt_rts_port {
         Some(port_name) => {
             let guard = RtsGuard::new(port_name)?;
             std::thread::sleep(ptt_lead_in);
@@ -397,7 +397,7 @@ impl MorsePlayer {
     pub fn play_gap(
         &self,
         dot_duration: u32,
-        _rts_port: Option<&str>,
+        _ptt_rts_port: Option<&str>,
         _rigctl_port: Option<&str>,
         _rigctl_model: Option<&str>,
     ) {
@@ -408,7 +408,7 @@ impl MorsePlayer {
     }
 
     #[cfg(not(feature = "audio"))]
-    pub fn play_gap(&self, _dot_duration: u32, rts_port: Option<&str>) {
+    pub fn play_gap(&self, _dot_duration: u32, ptt_rts_port: Option<&str>) {
         error!("'audio' feature is disabled in this Cargo build. Program cannot play audio.");
     }
 
@@ -417,12 +417,12 @@ impl MorsePlayer {
         &self,
         dot_duration: u32,
         tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
         rigctl_port: Option<&str>,
         rigctl_model: Option<&str>,
     ) {
         // clone the port name into an owned String so it can live in the 'static thread
-        let owned_rts: Option<String> = rts_port.map(|s| s.to_string());
+        let owned_rts: Option<String> = ptt_rts_port.map(|s| s.to_string());
         let owned_rigctl_port: Option<String> = rigctl_port.map(|s| s.to_string());
         let owned_rigctl_model: Option<String> = rigctl_model.map(|s| s.to_string());
         let stream_handle = self.stream_handle.clone();
@@ -447,7 +447,7 @@ impl MorsePlayer {
         &self,
         _dot_duration: u32,
         _tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
     ) {
         error!("Error: Audio feature is disabled. Cannot play non-blocking tone.");
     }
@@ -458,13 +458,13 @@ impl MorsePlayer {
         message: &str,
         dot_duration: u32,
         tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
         rigctl_port: Option<&str>,
         rigctl_model: Option<&str>,
     ) {
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         let tones = morse_to_tones(message, dot_duration, tone_freq);
-        let _ = play_morse_code(tones, &sink, rts_port, rigctl_port, rigctl_model);
+        let _ = play_morse_code(tones, &sink, ptt_rts_port, rigctl_port, rigctl_model);
         sink.sleep_until_end();
     }
 
@@ -474,13 +474,13 @@ impl MorsePlayer {
         message: &str,
         dot_duration: u32,
         tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
         rigctl_port: Option<&str>,
         rigctl_model: Option<&str>,
     ) {
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         let tones = encode_morse(message, dot_duration, tone_freq);
-        let _ = play_morse_code(tones, &sink, rts_port, rigctl_port, rigctl_model);
+        let _ = play_morse_code(tones, &sink, ptt_rts_port, rigctl_port, rigctl_model);
         sink.sleep_until_end();
     }
 
@@ -490,7 +490,7 @@ impl MorsePlayer {
         _message: &str,
         _dot_duration: u32,
         _tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
     ) {
         error!("Error: Audio feature is disabled. Cannot play Morse code.");
     }
@@ -501,7 +501,7 @@ impl MorsePlayer {
         _message: &str,
         _dot_duration: u32,
         _tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
         rigctl_port: Option<&str>,
         rigctl_model: Option<&str>,
     ) {
