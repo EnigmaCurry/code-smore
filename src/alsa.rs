@@ -38,15 +38,19 @@ pub fn listen_with_alsa(
         .with_reference_short_ms(dot_duration as u16)
         .build();
 
-    let mut filter = BandpassFilter::new(5, tone_freq as f64, bandwidth as f64, 44100.0)
-        .expect("failed to create bandpass filter");
+    let mut filter = BandpassFilter::new(5, tone_freq as f64, bandwidth as f64, 44100.0).expect(
+        "failed to create bandpass
+        filter",
+    );
 
     let mut last_signal_state = false;
     let mut last_signal_change = Instant::now();
     let mut message_log = Vec::new();
     let whitespace_regex = Regex::new(r"\s+").unwrap();
 
-    crate::term::clear_screen();
+    if tx.is_none() {
+        crate::term::clear_screen();
+    }
 
     loop {
         match io.readi(&mut buffer) {
@@ -77,15 +81,23 @@ pub fn listen_with_alsa(
                     let mut msg = decoder.message.as_str().to_string();
                     msg = whitespace_regex.replace_all(&msg, " ").to_string();
 
+                    if let Some(tx) = &tx {
+                        if !msg.trim().is_empty() {
+                            let _ = tx.send(format!(":typing:{msg}"));
+                        }
+                    }
+
                     if !msg.is_empty() {
                         crate::term::clear_screen();
                         for m in &message_log {
-                            log_message(m);
+                            log_message(m, tx.is_none());
                         }
-                        if output_morse {
-                            println!("{}", text_to_morse(&msg));
-                        } else {
-                            println!("{msg}");
+                        if tx.is_none() {
+                            if output_morse {
+                                println!("{}", text_to_morse(&msg));
+                            } else {
+                                println!("{msg}");
+                            }
                         }
                     }
 
@@ -102,27 +114,43 @@ pub fn listen_with_alsa(
                     msg = whitespace_regex.replace_all(&msg, " ").to_string();
 
                     if !msg.is_empty() {
-                        crate::term::clear_screen();
-                        for m in &message_log {
-                            log_message(m);
+                        let m = Message {
+                            timestamp: chrono::Local::now()
+                                .format(
+                                    "%y-%m-%d
+                        %H:%M:%S %p",
+                                )
+                                .to_string(),
+                            content: if output_morse {
+                                text_to_morse(&msg)
+                            } else {
+                                msg.clone()
+                            },
+                        };
+
+                        if let Some(ref tx) = tx {
+                            if !m.content.trim().is_empty() {
+                                let _ = tx.send(m.content.clone());
+                            }
+                        } else {
+                            crate::term::clear_screen();
+                            for m in &message_log {
+                                log_message(m, tx.is_none());
+                            }
+
+                            if tx.is_none() {
+                                if output_morse {
+                                    println!("{}", &m.content);
+                                } else {
+                                    println!("{msg}");
+                                }
+                            }
+
+                            log_message(&m, tx.is_none());
                         }
 
-                        let timestamp = Local::now().format("%y-%m-%d %H:%M:%S %p").to_string();
-                        let mut m = Message {
-                            timestamp: timestamp.clone(),
-                            content: msg.clone(),
-                        };
-                        if output_morse {
-                            m.content = text_to_morse(&m.content);
-                        }
-                        log_message(&m);
                         message_log.push(m.clone());
                         decoder.message.clear();
-
-                        //Send incoming message to the UI thread:
-                        if let Some(ref tx) = tx {
-                            let _ = tx.send(m.content.clone());
-                        }
                     }
                 }
             }

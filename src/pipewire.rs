@@ -215,7 +215,7 @@ pub fn listen(
                                 clear_screen();
                                 // Print all previous messages with timestamp
                                 for logged_msg in &user_data.message_log {
-                                    log_message(logged_msg);
+                                    log_message(logged_msg, true);
                                 }
                                 // Print the current message as it is received:
                                 if output_morse {
@@ -245,7 +245,7 @@ pub fn listen(
                                 clear_screen();
                                 // Print all previous messages with timestamp
                                 for logged_msg in &user_data.message_log {
-                                    log_message(logged_msg);
+                                    log_message(logged_msg, true);
                                 }
                                 // Get the current timestamp
                                 let timestamp =
@@ -258,7 +258,7 @@ pub fn listen(
                                 if output_morse {
                                     m.content = text_to_morse(&m.content);
                                 }
-                                log_message(&m);
+                                log_message(&m, true);
 
                                 // Push the complete message into the log
                                 user_data.message_log.push(m);

@@ -14,7 +14,7 @@ pub fn clear_screen() {
 }
 
 #[allow(dead_code)]
-pub fn log_message(message: &Message) {
+pub fn log_message(message: &Message, use_timestamp: bool) {
     // Get the terminal dimensions
     let terminal_width = term_size::dimensions().map_or(80, |(w, _)| w);
 
@@ -42,9 +42,13 @@ pub fn log_message(message: &Message) {
 
     // Print the first line with the timestamp aligned to the right
     if let Some(first_line) = wrapped_lines.first() {
-        let padding = terminal_width.saturating_sub(first_line.len() + message.timestamp.len());
-        let spaces = " ".repeat(padding);
-        println!("{}{}{}", first_line, spaces, message.timestamp);
+        if use_timestamp {
+            let padding = terminal_width.saturating_sub(first_line.len() + message.timestamp.len());
+            let spaces = " ".repeat(padding);
+            println!("{}{}{}", first_line, spaces, message.timestamp);
+        } else {
+            println!("{}", first_line);
+        }
     }
 
     // Print the rest of the wrapped lines
