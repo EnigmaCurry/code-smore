@@ -77,7 +77,7 @@ pub fn app() -> Command {
                 .global(true)
                 .num_args(1)
                 .value_name("PORT")
-                .conflicts_with_all(["gpio", "ptt-rts"])
+                .conflicts_with_all(["gpio"])
                 .help("Assert RTS on this serial port to key radio's CW (e.g. /dev/ttyUSB0)")
         )
         .arg(
