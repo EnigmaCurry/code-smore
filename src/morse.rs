@@ -263,20 +263,23 @@ pub fn play_morse_code(
     play_audio_with_ptt(&tones, sink, ptt_rts_port, rigctl_port, rigctl_model)
 }
 
-fn send_cw_rts(cw_port: &str, tones: &[(f32, u32)]) -> anyhow::Result<()> {
-    use std::{thread, time::Duration};
-    let mut port = serialport::new(cw_port, 9600)
+fn send_cw_rts(rts_port: &str, tones: &[(f32, u32)]) -> anyhow::Result<()> {
+    use std::{thread::sleep, time::Duration};
+    let mut port = serialport::new(rts_port, 9600)
         .timeout(Duration::from_millis(100))
         .open()
-        .with_context(|| format!("opening CW RTS port {}", cw_port))?;
+        .with_context(|| format!("opening RTS port {}", rts_port))?;
 
-    for &(_freq, duration_ms) in tones {
-        port.write_request_to_send(true)?; // key down
-        thread::sleep(Duration::from_millis(duration_ms as u64));
-        port.write_request_to_send(false)?; // key up
-                                            // inter-element spacing can be added here if needed
+    for &(freq, duration) in tones {
+        if freq == 0.0 || duration == 0 {
+            port.write_request_to_send(false)?; // key up
+        } else {
+            port.write_request_to_send(true)?; // key down
+        }
+        sleep(Duration::from_millis(duration.into()));
     }
 
+    port.write_request_to_send(false)?; // make sure it's low at the end
     Ok(())
 }
 
