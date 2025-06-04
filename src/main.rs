@@ -28,6 +28,7 @@ fn main() {
     let matches = cmd.clone().get_matches();
     let device = matches.get_one::<String>("device").map(|s| s.as_str());
     let ptt_rts_port = matches.get_one::<String>("ptt-rts").map(|s| s.as_str());
+    let cw_rts_port = matches.get_one::<String>("cw-rts").map(|s| s.as_str());
     let rigctl_port = matches.get_one::<String>("rigctl").map(|s| s.as_str());
     let rigctl_model = matches
         .get_one::<String>("rigctl-model")
@@ -108,6 +109,7 @@ fn main() {
                 *calibration_mode,
                 *baseline,
                 ptt_rts_port,
+                cw_rts_port,
                 rigctl_port,
                 rigctl_model,
             );
@@ -131,6 +133,7 @@ fn main() {
                 dot_duration,
                 tone_freq,
                 ptt_rts_port,
+                cw_rts_port,
                 rigctl_port,
                 rigctl_model,
             );
@@ -179,12 +182,14 @@ fn main() {
                                         dot_duration,
                                         tone_freq,
                                         ptt_rts_port,
+                                        cw_rts_port,
                                         rigctl_port,
                                         rigctl_model,
                                     );
                                     player.play_gap(
                                         dot_duration * 14,
                                         ptt_rts_port,
+                                        cw_rts_port,
                                         rigctl_port,
                                         rigctl_model,
                                     );
@@ -201,12 +206,14 @@ fn main() {
                                         dot_duration,
                                         tone_freq,
                                         ptt_rts_port,
+                                        cw_rts_port,
                                         rigctl_port,
                                         rigctl_model,
                                     );
                                     player.play_gap(
                                         dot_duration * 14,
                                         ptt_rts_port,
+                                        cw_rts_port,
                                         rigctl_port,
                                         rigctl_model,
                                     );
@@ -227,12 +234,14 @@ fn main() {
                                     dot_duration,
                                     tone_freq,
                                     ptt_rts_port,
+                                    cw_rts_port,
                                     rigctl_port,
                                     rigctl_model,
                                 );
                                 player.play_gap(
                                     dot_duration * 14,
                                     ptt_rts_port,
+                                    cw_rts_port,
                                     rigctl_port,
                                     rigctl_model,
                                 );
@@ -249,12 +258,14 @@ fn main() {
                                     dot_duration,
                                     tone_freq,
                                     ptt_rts_port,
+                                    cw_rts_port,
                                     rigctl_port,
                                     rigctl_model,
                                 );
                                 player.play_gap(
                                     dot_duration * 14,
                                     ptt_rts_port,
+                                    cw_rts_port,
                                     rigctl_port,
                                     rigctl_model,
                                 );
@@ -353,6 +364,7 @@ fn main() {
                 dot_duration,
                 device,
                 ptt_rts_port,
+                cw_rts_port,
                 rigctl_port,
                 rigctl_model,
             );

@@ -24,7 +24,8 @@ pub fn start_quiz(
     randomize: bool,
     calibration: bool,
     baseline: u32,
-    rts_port: Option<&str>,
+    ptt_rts_port: Option<&str>,
+    cw_rts_port: Option<&str>,
     rigctl_port: Option<&str>,
     rigctl_model: Option<&str>,
 ) {
@@ -45,7 +46,8 @@ pub fn start_quiz(
             "VVV",
             dot_duration,
             tone_freq,
-            rts_port,
+            ptt_rts_port,
+            cw_rts_port,
             rigctl_port,
             rigctl_model,
         );
@@ -111,7 +113,8 @@ pub fn start_quiz(
         randomize,
         calibration,
         if calibration { 0 } else { baseline },
-        rts_port,
+        ptt_rts_port,
+        cw_rts_port,
         rigctl_port,
         rigctl_model,
     );
@@ -140,7 +143,8 @@ fn reaction_time_quiz(
     randomize: bool,
     calibration: bool,
     baseline: u32,
-    rts_port: Option<&str>,
+    ptt_rts_port: Option<&str>,
+    cw_rts_port: Option<&str>,
     rigctl_port: Option<&str>,
     rigctl_model: Option<&str>,
 ) -> QuizResult {
@@ -194,7 +198,8 @@ fn reaction_time_quiz(
             player.play_nonblocking_tone(
                 dot_duration,
                 tone_freq,
-                rts_port,
+                ptt_rts_port,
+                cw_rts_port,
                 rigctl_port,
                 rigctl_model,
             );
@@ -203,7 +208,8 @@ fn reaction_time_quiz(
                 &target_letter.to_string(),
                 dot_duration,
                 tone_freq,
-                rts_port,
+                ptt_rts_port,
+                cw_rts_port,
                 rigctl_port,
                 rigctl_model,
             );
