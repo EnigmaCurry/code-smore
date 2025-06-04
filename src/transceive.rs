@@ -1,5 +1,3 @@
-// src/transeive.rs
-
 use crate::{alsa::listen_with_alsa, morse::MorsePlayer};
 use chrono::Local;
 use crossterm::{
@@ -34,7 +32,7 @@ fn redraw_log(stdout: &mut Stdout, log: &Vec<String>, max_log_rows: usize) {
 ///
 /// Incoming `:typing:` messages overwrite the last log line in place.
 /// A final (non-`:typing:`) line replaces that preview and becomes “complete.”
-pub fn run_transeiver(
+pub fn run_transceiver(
     tone_freq: f32,
     dot_duration: u32,
     sound_device: &str,
@@ -87,7 +85,7 @@ pub fn run_transeiver(
             } else {
                 // ─── 5.b) Final message ───────────────────────────────
                 // If we were building, overwrite that same last entry:
-                let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
+                let timestamp = Local::now().format("%y-%m-%d %H:%M:%S %p").to_string();
                 log.push(format!("[{timestamp}] > {raw}"));
                 building = false;
                 last_preview.clear();
@@ -160,7 +158,7 @@ pub fn run_transeiver(
                                 rigctl_model,
                             );
 
-                            let timestamp = Local::now().format("%H:%M:%S %Z").to_string();
+                            let timestamp = Local::now().format("%y-%m-%d %H:%M:%S %p").to_string();
                             log.push(format!("[{timestamp}] < {message}"));
                             redraw_log(&mut stdout, &log, max_log_rows);
                             last_log_len = log.len(); // force re-render if the log fills up

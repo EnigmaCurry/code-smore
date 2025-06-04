@@ -260,7 +260,7 @@ pub fn app() -> Command {
                 ),
         )
         .subcommand(
-            Command::new("transeive")
+            Command::new("transceive")
                 .about("Interactive half-duplex send/receive session")
                 .arg(
                     Arg::new("device")

@@ -10,7 +10,7 @@ mod message;
 mod morse;
 mod pipewire;
 mod prelude;
-mod transeive;
+mod transceive;
 
 use is_terminal::IsTerminal;
 use prelude::*;
@@ -344,11 +344,11 @@ fn main() {
             }
             0
         }
-        Some(("transeive", sub_matches)) => {
+        Some(("transceive", sub_matches)) => {
             let device = sub_matches
                 .get_one::<String>("device")
                 .expect("ALSA device required");
-            transeive::run_transeiver(
+            transceive::run_transceiver(
                 tone_freq,
                 dot_duration,
                 device,

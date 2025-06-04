@@ -92,7 +92,7 @@ pub fn listen_with_alsa(
                     decoder.signal_event_end(false);
                     decoder.signal_event_end(true);
                     let mut msg = decoder.message.as_str().to_string();
-                    msg = whitespace_regex.replace_all(&msg, " ").to_string();
+                    msg = whitespace_regex.replace_all(&msg, " ").trim().to_string();
 
                     if !msg.is_empty() {
                         let m = Message {
@@ -111,6 +111,8 @@ pub fn listen_with_alsa(
                                 let _ = tx.send(m.content.clone());
                             }
                         }
+
+                        println!("[{}] > {}", m.timestamp, m.content);
 
                         message_log.push(m.clone());
                         decoder.message.clear();
