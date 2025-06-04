@@ -253,48 +253,11 @@ pub fn play_morse_code(
     rigctl_port: Option<&str>,
     rigctl_model: Option<&str>,
 ) -> anyhow::Result<()> {
-    if let Some(cw_port) = cw_rts_port {
-        // Send CW by asserting/deasserting RTS directly
-        send_cw_rts(cw_port, &tones)?;
-        return Ok(());
-    }
-
-    // Otherwise fall back to audio playback + PTT
-    play_audio_with_ptt(&tones, sink, ptt_rts_port, rigctl_port, rigctl_model)
-}
-
-fn send_cw_rts(rts_port: &str, tones: &[(f32, u32)]) -> anyhow::Result<()> {
-    use std::{thread::sleep, time::Duration};
-    let mut port = serialport::new(rts_port, 9600)
-        .timeout(Duration::from_millis(100))
-        .open()
-        .with_context(|| format!("opening RTS port {}", rts_port))?;
-
-    for &(freq, duration) in tones {
-        if freq == 0.0 || duration == 0 {
-            port.write_request_to_send(false)?; // key up
-        } else {
-            port.write_request_to_send(true)?; // key down
-        }
-        sleep(Duration::from_millis(duration.into()));
-    }
-
-    port.write_request_to_send(false)?; // make sure it's low at the end
-    Ok(())
-}
-
-#[cfg(feature = "audio")]
-fn play_audio_with_ptt(
-    tones: &[(f32, u32)],
-    sink: &Sink,
-    ptt_rts_port: Option<&str>,
-    rigctl_port: Option<&str>,
-    rigctl_model: Option<&str>,
-) -> anyhow::Result<()> {
     let ptt_lead_in = Duration::from_millis(50);
     let ptt_hold_after = Duration::from_millis(50);
 
-    let _rts = match ptt_rts_port {
+    // Optional RTS guard
+    let _rts_guard = match ptt_rts_port {
         Some(port_name) => {
             let guard = RtsGuard::new(port_name)?;
             std::thread::sleep(ptt_lead_in);
@@ -303,6 +266,7 @@ fn play_audio_with_ptt(
         None => None,
     };
 
+    // Optional rigctl PTT on
     if let (Some(port), Some(model)) = (rigctl_port, rigctl_model) {
         let status = Command::new("rigctl")
             .arg("-m")
@@ -323,19 +287,17 @@ fn play_audio_with_ptt(
         }
     }
 
-    let sample_rate = 44_100;
-    for (freq, duration) in tones {
-        sink.append(Tone {
-            freq: *freq,
-            duration: *duration,
-            sample_rate,
-            current_sample: 0,
-        });
+    // If CW RTS is set, use that for actual Morse keying
+    if let Some(cw_port) = cw_rts_port {
+        send_cw_rts(cw_port, &tones)?;
+        std::thread::sleep(ptt_hold_after);
+    } else {
+        // Otherwise use audio
+        play_audio_only(&tones, sink)?;
+        std::thread::sleep(ptt_hold_after);
     }
 
-    sink.sleep_until_end();
-    std::thread::sleep(ptt_hold_after);
-
+    // Optional rigctl PTT off
     if let (Some(port), Some(model)) = (rigctl_port, rigctl_model) {
         let _ = Command::new("rigctl")
             .arg("-m")
@@ -347,6 +309,41 @@ fn play_audio_with_ptt(
             .status();
     }
 
+    Ok(())
+}
+
+#[cfg(feature = "audio")]
+fn play_audio_only(tones: &[(f32, u32)], sink: &Sink) -> anyhow::Result<()> {
+    let sample_rate = 44_100;
+    for (freq, duration) in tones {
+        sink.append(Tone {
+            freq: *freq,
+            duration: *duration,
+            sample_rate,
+            current_sample: 0,
+        });
+    }
+    sink.sleep_until_end();
+    Ok(())
+}
+
+fn send_cw_rts(rts_port: &str, tones: &[(f32, u32)]) -> anyhow::Result<()> {
+    use std::{thread::sleep, time::Duration};
+    let mut port = serialport::new(rts_port, 9600)
+        .timeout(Duration::from_millis(100))
+        .open()
+        .with_context(|| format!("opening RTS port {}", rts_port))?;
+
+    for &(freq, duration) in tones {
+        if freq == 0.0 || duration == 0 {
+            port.write_request_to_send(false)?; // key up
+        } else {
+            port.write_request_to_send(true)?; // key down
+        }
+        sleep(Duration::from_millis(duration.into()));
+    }
+
+    port.write_request_to_send(false)?; // make sure it's low at the end
     Ok(())
 }
 
