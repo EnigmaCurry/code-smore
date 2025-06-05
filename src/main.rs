@@ -4,6 +4,7 @@ mod alsa;
 mod cli;
 mod credits;
 mod fecr_quiz;
+mod fft;
 mod file;
 mod filter;
 mod gpio;
