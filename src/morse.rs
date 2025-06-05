@@ -257,7 +257,16 @@ pub fn play_morse_code(
     let ptt_hold_after = Duration::from_millis(50);
 
     // Optional RTS guard
-    let _rts_guard = match ptt_rts_port {
+    let _ptt_guard = match ptt_rts_port {
+        Some(port_name) => {
+            let guard = RtsGuard::new(port_name)?;
+            std::thread::sleep(ptt_lead_in);
+            Some(guard)
+        }
+        None => None,
+    };
+
+    let _cw_guard = match cw_rts_port {
         Some(port_name) => {
             let guard = RtsGuard::new(port_name)?;
             std::thread::sleep(ptt_lead_in);
