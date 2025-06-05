@@ -53,13 +53,13 @@ fn main() {
         .init();
     debug!("logging initialized.");
 
-    // Initialize RTS state:
-    if let Some(rts_port) = ptt_rts_port {
-        let _ = ensure_rts_deasserted(rts_port);
-    }
-    if let Some(rts_port) = cw_rts_port {
-        let _ = ensure_rts_deasserted(rts_port);
-    }
+    // // Initialize RTS state:
+    // if let Some(rts_port) = ptt_rts_port {
+    //     let _ = ensure_rts_deasserted(rts_port);
+    // }
+    // if let Some(rts_port) = cw_rts_port {
+    //     let _ = ensure_rts_deasserted(rts_port);
+    // }
 
     // Print help if no subcommand is given:
     if matches.subcommand_name().is_none() {

@@ -239,11 +239,6 @@ pub fn play_morse_code(
         None => None,
     };
 
-    let _cw_cleanup = match cw_rts_port {
-        Some(port_name) => Some(RtsCleanupGuard::new_deassert_only(port_name)?),
-        None => None,
-    };
-
     // Optional rigctl PTT on
     if let (Some(port), Some(model)) = (rigctl_port, rigctl_model) {
         let status = Command::new("rigctl")
