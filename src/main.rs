@@ -4,6 +4,7 @@ mod alsa;
 mod cli;
 mod credits;
 mod fecr_quiz;
+mod file;
 mod filter;
 mod gpio;
 mod message;
@@ -316,6 +317,20 @@ fn main() {
                     error!("Sorry, the listen feature is only supported on Linux right now.");
                     std::process::exit(1);
                 }
+            } else if let Some(file_name) = sub_matches
+                .get_one::<String>("file")
+                .filter(|s| !s.is_empty())
+            {
+                file::listen_to_file(
+                    file_name,
+                    tone_freq,
+                    bandwidth,
+                    threshold,
+                    dot_duration,
+                    *morse,
+                    None,
+                )
+                .expect("alsa::listen_with_alsa() failed");
             } else if let Some(device_name) = sub_matches
                 .get_one::<String>("device")
                 .filter(|s| !s.is_empty())
