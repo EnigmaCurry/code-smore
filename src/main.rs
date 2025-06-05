@@ -384,10 +384,15 @@ fn main() {
             let device = sub_matches
                 .get_one::<String>("device")
                 .expect("ALSA device required");
+            let threshold = sub_matches
+                .get_one::<f32>("threshold")
+                .copied()
+                .unwrap_or(0.03);
             transceive::run_transceiver(
                 tone_freq,
                 dot_duration,
                 device,
+                threshold,
                 ptt_rts_port,
                 cw_rts_port,
                 rigctl_port,
