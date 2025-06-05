@@ -16,14 +16,24 @@ If you do not wish to install the precompiled version (or none is available for 
 
 ```
 ## Make sure to install rust and cargo dependencies:
-## https://rustup.rs/
+## See https://rustup.rs/
 
-## (Linux only:) Install the device dependencies:
-## sudo apt install libasound2-dev libudev-dev
+## (Linux only:) Install the build dependencies:
+# sudo apt install build-essential libasound2-dev libudev-dev
 
-## Download and Build code-smore source code:
+## Download and Build code-smore source code, with the default features (ALSA only):
 cargo install code-smore
+
+## Or build it with optional features enabled, e.g., pipewire support added:
+# sudo apt install pkg-config libpipewire-0.3-dev libclang-dev
+cargo install code-smore --features pipewire
+
+## Install optional rigctl dependencies:
+# sudo apt install libhamlib-utils
 ```
+
+Note: pipewire libraries are only required for the `receive --listen`
+option, otherwise ALSA is used for everything else.
 
 ## Usage
 
@@ -205,6 +215,52 @@ Please note that the the signal must be communication grade with no
 interference. If you have any other sound playing in the background,
 it will negatively affect the signal copy. Filtering signals has not
 been implemented yet.
+
+## Send and receive morse code via radio
+
+If you have a radio with a USB port that provides sound and rig
+control (PTT), or if you have an external sound card like the
+[digirig](https://digirig.net/product/digirig-mobile/) to interface
+with any other radio, you can use code-smore as a morse code
+transceiver to send and receive CW communication over the airwaves.
+
+For example:
+
+```
+code-smore transceive \
+  --device hw:0,0 \
+  --ptt-rts /dev/ttyACM0 \
+  --cw-rts /dev/ttyACM1
+```
+
+The `transceive` command requires the following information:
+
+ * The sound card to use. Find your device by running `arecord -l`.
+   The format you need to specify is the prefix `hw:` + CARD + `,` +
+   DEVICE. (e.g., `--device hw:0,0`).
+ * One of the options for controlling the radio transmitter:
+   `--ptt-rts` or `--rigctl PORT --rigctl-model MODEL`.
+ * For transmitting mourse code AUDIO over FM, no other option is
+   required. To transmit CW, you need to provide a mechanism that keys
+   your radio: `--cw-rts PORT`.
+
+In the previous example, the exact arguments used to connect to an
+IC-705 are shown. In the radio settings, you can set the following
+options to setup the two serial devices `/dev/ttyACM0` and
+`/dev/ttyACM1` that are exposed by the USB connection:
+
+ * On the IC-705,
+ * Press the `Menu` button.
+ * Press `Set`.
+ * Press `Connectors`.
+ * Press `USB SEND/Keyring`.
+ * Press `USB Send`, choose `USB (A) RTS` to setup the RTS line of
+   `/dev/ttyACM0` to be the PTT function that triggers the radio
+   transmitter.
+ * Press `USB Keying (CW)`, choose `USB (B) RTS` to setup the RTS line
+   of `/dev/ttyACM1` to be the CW key toggle of the radio.
+ * Plug in the USB, tune your radio, check your antenna, and make sure
+   you are in `CW` mode.
 
 ## Receive morse code from GPIO
 
