@@ -243,7 +243,7 @@ pub fn app() -> Command {
                                 })
                         })
                         .help(
-                            "Minimal signal value threshold [0.0..1.0]",
+                            "Bandpass filter frequency in Hz.",
                         ),
                 )
                 .arg(
@@ -278,6 +278,25 @@ pub fn app() -> Command {
                         .required(true)
                         .value_name("ALSA_DEVICE")
                         .help("ALSA device to receive morse from"),
+                )
+                .arg(
+                    Arg::new("threshold")
+                        .short('t')
+                        .long("threshold")
+                        .value_parser(|v: &str| {
+                            v.parse::<f32>()
+                                .map_err(|_| String::from("Threshold must be a valid floating-point number"))
+                                .and_then(|val| {
+                                    if (0.0..=1.0).contains(&val) {
+                                        Ok(val)
+                                    } else {
+                                        Err(String::from("Threshold must be between 0.0 and 1.0"))
+                                    }
+                                })
+                        })
+                        .help(
+                            "Minimal signal value threshold [0.0..1.0]",
+                        ),
                 )
         )
         .subcommand(
