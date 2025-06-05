@@ -12,6 +12,7 @@ mod message;
 mod morse;
 mod pipewire;
 mod prelude;
+mod rts;
 mod transceive;
 
 use is_terminal::IsTerminal;
@@ -23,8 +24,8 @@ use std::u8;
 
 use crate::pipewire::ensure_pipewire;
 
+use crate::rts::ensure_rts_deasserted;
 use crate::{credits::print_credits, morse::text_to_morse};
-
 fn main() {
     let mut cmd = cli::app();
     let matches = cmd.clone().get_matches();
@@ -51,6 +52,14 @@ fn main() {
         .format_timestamp(None)
         .init();
     debug!("logging initialized.");
+
+    // Initialize RTS state:
+    if let Some(rts_port) = ptt_rts_port {
+        let _ = ensure_rts_deasserted(rts_port);
+    }
+    if let Some(rts_port) = cw_rts_port {
+        let _ = ensure_rts_deasserted(rts_port);
+    }
 
     // Print help if no subcommand is given:
     if matches.subcommand_name().is_none() {
