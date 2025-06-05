@@ -214,12 +214,10 @@ fn morse_to_tones(morse_code: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f
 }
 
 /// RAII guard that asserts RTS on construction and de-asserts on drop.
-#[cfg(feature = "audio")]
 struct RtsGuard {
     port: Box<dyn SerialPort>,
 }
 
-#[cfg(feature = "audio")]
 impl RtsGuard {
     pub fn new(port_name: &str) -> anyhow::Result<Self> {
         let mut port = serialport::new(port_name, 9_600)
@@ -229,6 +227,27 @@ impl RtsGuard {
         port.write_request_to_send(true).context("asserting RTS")?;
         debug!("RTS ON");
         Ok(RtsGuard { port })
+    }
+}
+
+struct RtsCleanupGuard {
+    port: Box<dyn SerialPort>,
+}
+
+impl RtsCleanupGuard {
+    pub fn new_deassert_only(port_name: &str) -> anyhow::Result<Self> {
+        let port = serialport::new(port_name, 9_600)
+            .timeout(Duration::from_millis(100))
+            .open()
+            .with_context(|| format!("opening serial port `{}`", port_name))?;
+        Ok(Self { port })
+    }
+}
+
+impl Drop for RtsCleanupGuard {
+    fn drop(&mut self) {
+        let _ = self.port.write_request_to_send(false); // Always clean up
+        debug!("RTS OFF (deassert cleanup)");
     }
 }
 
@@ -266,12 +285,8 @@ pub fn play_morse_code(
         None => None,
     };
 
-    let _cw_guard = match cw_rts_port {
-        Some(port_name) => {
-            let guard = RtsGuard::new(port_name)?;
-            std::thread::sleep(ptt_lead_in);
-            Some(guard)
-        }
+    let _cw_cleanup = match cw_rts_port {
+        Some(port_name) => Some(RtsCleanupGuard::new_deassert_only(port_name)?),
         None => None,
     };
 
