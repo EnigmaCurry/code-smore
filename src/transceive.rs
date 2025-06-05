@@ -12,7 +12,10 @@ use crossterm::{
 use std::io::Stdout;
 use std::{
     io::{stdout, Write},
-    sync::mpsc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, Arc,
+    },
     thread,
     time::Duration,
 };
@@ -46,17 +49,40 @@ pub fn run_transceiver(
     enable_raw_mode().expect("Failed to enable raw mode");
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture, Hide).unwrap();
 
-    // ─── 2) Spawn listener thread (ALSA) with a Sender<String> ───────────────
+    // ─── 2) Shared transmit flag ─────────────────────────────────────────────
+    let in_transmit = Arc::new(AtomicBool::new(false));
+
+    // ─── 3) Spawn listener thread (ALSA) with a Sender<String> ───────────────
     let (tx, rx) = mpsc::channel::<String>();
     let dev = sound_device.to_string();
+    let in_tx_clone = Arc::clone(&in_transmit);
     thread::spawn(move || {
-        // The `listen_with_alsa` is expected to send:
-        //   • preview updates as ":typing:partial_text"
-        //   • final text as "COMPLETE_TEXT" (no prefix)
-        let _ = listen_with_alsa(&dev, tone_freq, 200.0, 0.3, dot_duration, false, Some(tx));
+        loop {
+            if !in_tx_clone.load(Ordering::SeqCst) {
+                // Only decode when NOT transmitting
+                // The `listen_with_alsa` is expected to send:
+                //   • preview updates as ":typing:partial_text"
+                //   • final text as "COMPLETE_TEXT" (no prefix)
+                if let Err(_) = listen_with_alsa(
+                    &dev,
+                    tone_freq,
+                    200.0,
+                    0.3,
+                    dot_duration,
+                    false,
+                    Some(tx.clone()),
+                ) {
+                    // If error, sleep briefly and continue
+                    thread::sleep(Duration::from_millis(10));
+                }
+            } else {
+                // Transmitting: skip listening
+                thread::sleep(Duration::from_millis(5));
+            }
+        }
     });
 
-    // ─── 3) Shared UI state ───────────────────────────────────────────────────
+    // ─── 4) Shared UI state ───────────────────────────────────────────────────
     let player = MorsePlayer::new();
     let mut input = String::new();
 
@@ -70,13 +96,13 @@ pub fn run_transceiver(
     let mut last_log_len = 0;
 
     loop {
-        // ─── 4) Compute layout rows ────────────────────────────────────────────
+        // ─── 5) Compute layout rows ────────────────────────────────────────────
         let (_term_width, term_height) = crossterm::terminal::size().unwrap();
         let input_row = term_height - 1; // bottom row for user input
         let preview_row = input_row - 1; // one row above input for preview
         let max_log_rows = preview_row as usize; // rows available for “log” (0..preview_row-1)
 
-        // ─── 5) Drain `rx`: process each incoming string ───────────────────────
+        // ─── 6) Drain `rx`: process each incoming string ───────────────────────
         // If it starts with ":typing:", treat as a preview. Otherwise, it’s final text.
         let mut need_full_log_redraw = false;
         while let Ok(raw) = rx.try_recv() {
@@ -84,7 +110,7 @@ pub fn run_transceiver(
                 last_preview = partial.to_string();
                 building = true;
             } else {
-                // ─── 5.b) Final message ───────────────────────────────
+                // ─── 6.b) Final message ───────────────────────────────
                 // If we were building, overwrite that same last entry:
                 let timestamp = Local::now().format("%y-%m-%d %H:%M:%S %p").to_string();
                 log.push(format!("[{timestamp}] > {raw}"));
@@ -94,14 +120,14 @@ pub fn run_transceiver(
             }
         }
 
-        // ─── 6) Redraw the “log” area if needed ───────────────────────────────
+        // ─── 7) Redraw the “log” area if needed ───────────────────────────────
         let current_log_len = log.len();
         if need_full_log_redraw || current_log_len != last_log_len {
             redraw_log(&mut stdout, &log, max_log_rows);
             last_log_len = log.len();
         }
 
-        // ─── 7) Redraw the “preview” row unconditionally on change ────────────
+        // ─── 8) Redraw the “preview” row unconditionally on change ────────────
         // Always clear that single line, then reprint if building. No newline.
         execute!(
             stdout,
@@ -110,10 +136,10 @@ pub fn run_transceiver(
         )
         .unwrap();
         if building && !last_preview.is_empty() {
-            print!("\x1b[2m[...]{last_preview}\x1b[22m");
+            print!("\x1b[2m[...]{}\x1b[22m", last_preview);
         }
 
-        // ─── 8) Redraw the input prompt (bottom row) ─────────────────────────
+        // ─── 9) Redraw the input prompt (bottom row) ─────────────────────────
         execute!(
             stdout,
             MoveTo(0, input_row as u16),
@@ -123,7 +149,7 @@ pub fn run_transceiver(
         print!("< {input}");
         stdout.flush().unwrap();
 
-        // ─── 9) Handle user keystrokes ────────────────────────────────────────
+        // ─── 10) Handle user keystrokes ────────────────────────────────────────
         if poll(Duration::from_millis(50)).unwrap() {
             if let Event::Key(key_event) = read().unwrap() {
                 match key_event.code {
@@ -141,6 +167,9 @@ pub fn run_transceiver(
                     KeyCode::Enter => {
                         let message = input.trim();
                         if !message.is_empty() {
+                            // ─── Enter transmit mode ─────────────────
+                            in_transmit.store(true, Ordering::SeqCst);
+
                             execute!(
                                 stdout,
                                 MoveTo(0, preview_row as u16),
@@ -150,6 +179,7 @@ pub fn run_transceiver(
                             print!("\x1b[2m[...sending \"{message}\"]\x1b[22m");
                             stdout.flush().unwrap();
 
+                            // Play the Morse message (asserts/deasserts RTS internally)
                             player.play(
                                 message,
                                 dot_duration,
@@ -159,6 +189,9 @@ pub fn run_transceiver(
                                 rigctl_port,
                                 rigctl_model,
                             );
+
+                            // ─── Exit transmit mode ──────────────────
+                            in_transmit.store(false, Ordering::SeqCst);
 
                             let timestamp = Local::now().format("%y-%m-%d %H:%M:%S %p").to_string();
                             log.push(format!("[{timestamp}] < {message}"));
@@ -176,7 +209,7 @@ pub fn run_transceiver(
         }
     }
 
-    // ─── 10) Cleanup: leave alternate screen, restore normal mode ───────────
+    // ─── 11) Cleanup: leave alternate screen, restore normal mode ───────────
     disable_raw_mode().unwrap();
     execute!(
         stdout,

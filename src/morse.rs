@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 use crate::prelude::*;
-use crate::rts::{RtsCleanupGuard, RtsGuard};
+use crate::rts::RtsGuard;
 use anyhow;
 use anyhow::Context;
 use rodio::cpal::traits::HostTrait;
