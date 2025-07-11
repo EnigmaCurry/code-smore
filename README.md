@@ -229,6 +229,7 @@ For example:
 ```
 code-smore transceive \
   --device hw:0,0 \
+  --tone 500 \
   --ptt-rts /dev/ttyACM0 \
   --cw-rts /dev/ttyACM1
 ```
