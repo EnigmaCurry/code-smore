@@ -1,7 +1,10 @@
 #![allow(unused_imports)]
 use crate::prelude::*;
+use crate::rts::RtsGuard;
 use anyhow;
 use anyhow::Context;
+use rodio::cpal::traits::HostTrait;
+use rodio::DeviceTrait;
 #[cfg(feature = "audio")]
 use rodio::{OutputStream, Sink, Source};
 #[cfg(feature = "gpio")]
@@ -9,6 +12,8 @@ use rppal;
 #[cfg(feature = "audio")]
 use serialport::SerialPort;
 use std::collections::HashMap;
+use std::io::Write;
+use std::process::{Command, Stdio};
 use std::sync::Arc;
 #[allow(unused_imports)]
 use std::thread::{self, sleep};
@@ -209,64 +214,109 @@ fn morse_to_tones(morse_code: &str, dot_duration: u32, tone_freq: f32) -> Vec<(f
     tones
 }
 
-/// RAII guard that asserts RTS on construction and de-asserts on drop.
-#[cfg(feature = "audio")]
-struct RtsGuard {
-    port: Box<dyn SerialPort>,
-}
-
-#[cfg(feature = "audio")]
-impl RtsGuard {
-    pub fn new(port_name: &str) -> anyhow::Result<Self> {
-        let mut port = serialport::new(port_name, 9_600)
-            .timeout(Duration::from_millis(100))
-            .open()
-            .with_context(|| format!("opening serial port `{}`", port_name))?;
-        port.write_request_to_send(true).context("asserting RTS")?;
-        debug!("RTS ON");
-        Ok(RtsGuard { port })
-    }
-}
-
-#[cfg(feature = "audio")]
-impl Drop for RtsGuard {
-    fn drop(&mut self) {
-        // best-effort deassert
-        let _ = self.port.write_request_to_send(false);
-        debug!("RTS OFF");
-    }
-}
-
 /// Play a sequence of (frequency, duration_ms) via the given Sink.
-/// If `rts_port` is `Some("/dev/ttyUSB0")` it will raise RTS for the
-/// entire duration of the playback, then lower it at the end.
+/// If `ptt_rts_port` is set, RTS will be asserted slightly before playback
+/// and deasserted slightly after playback finishes.
 #[cfg(feature = "audio")]
 pub fn play_morse_code(
     tones: Vec<(f32, u32)>,
     sink: &Sink,
-    rts_port: Option<&str>,
+    ptt_rts_port: Option<&str>,
+    cw_rts_port: Option<&str>,
+    rigctl_port: Option<&str>,
+    rigctl_model: Option<&str>,
 ) -> anyhow::Result<()> {
-    // If requested, open the port and assert RTS.
-    // The guard lives until end of this function (i.e. until after playback).
-    let _rts = match rts_port {
-        Some(port_name) => Some(RtsGuard::new(port_name)?),
+    let ptt_lead_in = Duration::from_millis(50);
+    let ptt_hold_after = Duration::from_millis(50);
+
+    // Optional RTS guard
+    let _ptt_guard = match ptt_rts_port {
+        Some(port_name) => {
+            let guard = RtsGuard::new(port_name)?;
+            std::thread::sleep(ptt_lead_in);
+            Some(guard)
+        }
         None => None,
     };
 
+    // Optional rigctl PTT on
+    if let (Some(port), Some(model)) = (rigctl_port, rigctl_model) {
+        let status = Command::new("rigctl")
+            .arg("-m")
+            .arg(model)
+            .arg("-r")
+            .arg(port)
+            .arg("T")
+            .arg("1")
+            .status();
+
+        if let Ok(s) = status {
+            if !s.success() {
+                return Err(anyhow::anyhow!("rigctl PTT on failed with status: {}", s));
+            }
+            std::thread::sleep(ptt_lead_in);
+        } else {
+            return Err(anyhow::anyhow!("Failed to spawn rigctl"));
+        }
+    }
+
+    // If CW RTS is set, use that for actual Morse keying
+    if let Some(cw_port) = cw_rts_port {
+        send_cw_rts(cw_port, &tones)?;
+        std::thread::sleep(ptt_hold_after);
+    } else {
+        // Otherwise use audio
+        play_audio_only(&tones, sink)?;
+        std::thread::sleep(ptt_hold_after);
+    }
+
+    // Optional rigctl PTT off
+    if let (Some(port), Some(model)) = (rigctl_port, rigctl_model) {
+        let _ = Command::new("rigctl")
+            .arg("-m")
+            .arg(model)
+            .arg("-r")
+            .arg(port)
+            .arg("T")
+            .arg("0")
+            .status();
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "audio")]
+fn play_audio_only(tones: &[(f32, u32)], sink: &Sink) -> anyhow::Result<()> {
     let sample_rate = 44_100;
     for (freq, duration) in tones {
         sink.append(Tone {
-            freq,
-            duration,
+            freq: *freq,
+            duration: *duration,
             sample_rate,
             current_sample: 0,
         });
     }
-
-    // block current thread until playback finishes
     sink.sleep_until_end();
+    Ok(())
+}
 
-    // _rts goes out of scope here, dropping RtsGuard and de-asserting RTS
+fn send_cw_rts(rts_port: &str, tones: &[(f32, u32)]) -> anyhow::Result<()> {
+    use std::{thread::sleep, time::Duration};
+    let mut port = serialport::new(rts_port, 9600)
+        .timeout(Duration::from_millis(100))
+        .open()
+        .with_context(|| format!("opening RTS port {}", rts_port))?;
+
+    for &(freq, duration) in tones {
+        if freq == 0.0 || duration == 0 {
+            port.write_request_to_send(false)?; // key up
+        } else {
+            port.write_request_to_send(true)?; // key down
+        }
+        sleep(Duration::from_millis(duration.into()));
+    }
+
+    port.write_request_to_send(false)?; // make sure it's low at the end
     Ok(())
 }
 
@@ -300,6 +350,22 @@ pub struct MorsePlayer {
 }
 
 impl MorsePlayer {
+    #[cfg(feature = "audio")]
+    pub fn new_with_device(device_name: &str) -> anyhow::Result<Self> {
+        let host = rodio::cpal::default_host();
+        let device = host
+            .output_devices()?
+            .find(|d| d.name().map_or(false, |n| n == device_name))
+            .ok_or_else(|| anyhow::anyhow!("Audio device not found: {}", device_name))?;
+
+        let (stream, handle) = OutputStream::try_from_device(&device)?;
+        Ok(Self {
+            #[allow(clippy::arc_with_non_send_sync)]
+            stream: Arc::new(stream),
+            stream_handle: Arc::new(handle),
+        })
+    }
+
     pub fn new() -> Self {
         #[cfg(feature = "audio")]
         {
@@ -321,30 +387,59 @@ impl MorsePlayer {
     }
 
     #[cfg(feature = "audio")]
-    pub fn play_gap(&self, dot_duration: u32, rts_port: Option<&str>) {
+    pub fn play_gap(
+        &self,
+        dot_duration: u32,
+        _ptt_rts_port: Option<&str>,
+        _cw_rts_port: Option<&str>,
+        _rigctl_port: Option<&str>,
+        _rigctl_model: Option<&str>,
+    ) {
         let tones = vec![(0.0, dot_duration)];
         let sink = Sink::try_new(&self.stream_handle).unwrap();
-        let _ = play_morse_code(tones, &sink, rts_port);
+        let _ = play_morse_code(tones, &sink, None, None, None, None);
         sink.sleep_until_end();
     }
 
     #[cfg(not(feature = "audio"))]
-    pub fn play_gap(&self, _dot_duration: u32, rts_port: Option<&str>) {
+    pub fn play_gap(
+        &self,
+        _dot_duration: u32,
+        ptt_rts_port: Option<&str>,
+        cw_rts_port: Option<&str>,
+    ) {
         error!("'audio' feature is disabled in this Cargo build. Program cannot play audio.");
     }
 
     #[cfg(feature = "audio")]
-    pub fn play_nonblocking_tone(&self, dot_duration: u32, tone_freq: f32, rts_port: Option<&str>) {
+    pub fn play_nonblocking_tone(
+        &self,
+        dot_duration: u32,
+        tone_freq: f32,
+        ptt_rts_port: Option<&str>,
+        cw_rts_port: Option<&str>,
+        rigctl_port: Option<&str>,
+        rigctl_model: Option<&str>,
+    ) {
         // clone the port name into an owned String so it can live in the 'static thread
-        let owned_rts: Option<String> = rts_port.map(|s| s.to_string());
+        let owned_ptt_rts: Option<String> = ptt_rts_port.map(|s| s.to_string());
+        let owned_cw_rts: Option<String> = cw_rts_port.map(|s| s.to_string());
+        let owned_rigctl_port: Option<String> = rigctl_port.map(|s| s.to_string());
+        let owned_rigctl_model: Option<String> = rigctl_model.map(|s| s.to_string());
         let stream_handle = self.stream_handle.clone();
 
         std::thread::spawn(move || {
             let tones = vec![(tone_freq, dot_duration)];
             let sink = Sink::try_new(&stream_handle).unwrap();
-
-            // pass a `&str` into play_morse_code by calling `.as_deref()` on the owned String
-            play_morse_code(tones, &sink, owned_rts.as_deref()).unwrap();
+            play_morse_code(
+                tones,
+                &sink,
+                owned_ptt_rts.as_deref(),
+                owned_cw_rts.as_deref(),
+                owned_rigctl_port.as_deref(),
+                owned_rigctl_model.as_deref(),
+            )
+            .unwrap();
             sink.sleep_until_end();
         });
     }
@@ -354,7 +449,8 @@ impl MorsePlayer {
         &self,
         _dot_duration: u32,
         _tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
+        cw_rts_port: Option<&str>,
     ) {
         error!("Error: Audio feature is disabled. Cannot play non-blocking tone.");
     }
@@ -365,19 +461,45 @@ impl MorsePlayer {
         message: &str,
         dot_duration: u32,
         tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
+        cw_rts_port: Option<&str>,
+        rigctl_port: Option<&str>,
+        rigctl_model: Option<&str>,
     ) {
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         let tones = morse_to_tones(message, dot_duration, tone_freq);
-        let _ = play_morse_code(tones, &sink, rts_port);
+        let _ = play_morse_code(
+            tones,
+            &sink,
+            ptt_rts_port,
+            cw_rts_port,
+            rigctl_port,
+            rigctl_model,
+        );
         sink.sleep_until_end();
     }
 
     #[cfg(feature = "audio")]
-    pub fn play(&self, message: &str, dot_duration: u32, tone_freq: f32, rts_port: Option<&str>) {
+    pub fn play(
+        &self,
+        message: &str,
+        dot_duration: u32,
+        tone_freq: f32,
+        ptt_rts_port: Option<&str>,
+        cw_rts_port: Option<&str>,
+        rigctl_port: Option<&str>,
+        rigctl_model: Option<&str>,
+    ) {
         let sink = Sink::try_new(&self.stream_handle).unwrap();
         let tones = encode_morse(message, dot_duration, tone_freq);
-        let _ = play_morse_code(tones, &sink, rts_port);
+        let _ = play_morse_code(
+            tones,
+            &sink,
+            ptt_rts_port,
+            cw_rts_port,
+            rigctl_port,
+            rigctl_model,
+        );
         sink.sleep_until_end();
     }
 
@@ -387,7 +509,8 @@ impl MorsePlayer {
         _message: &str,
         _dot_duration: u32,
         _tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
+        cw_rts_port: Option<&str>,
     ) {
         error!("Error: Audio feature is disabled. Cannot play Morse code.");
     }
@@ -398,7 +521,10 @@ impl MorsePlayer {
         _message: &str,
         _dot_duration: u32,
         _tone_freq: f32,
-        rts_port: Option<&str>,
+        ptt_rts_port: Option<&str>,
+        cw_rts_port: Option<&str>,
+        rigctl_port: Option<&str>,
+        rigctl_model: Option<&str>,
     ) {
         error!("Error: Audio feature is disabled. Cannot play Morse code.");
     }

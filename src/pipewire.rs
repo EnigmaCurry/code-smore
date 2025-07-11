@@ -10,8 +10,6 @@ use crate::pipewire::spa::pod::Pod;
 #[allow(unused_imports)]
 use crate::prelude::*;
 #[allow(unused_imports)]
-use crate::term::log_message;
-#[allow(unused_imports)]
 use chrono::Local;
 #[allow(unused_imports)]
 use morse_codec::decoder::Decoder;
@@ -142,8 +140,6 @@ pub fn listen(
     let mut last_signal_state = false;
     let whitespace_regex = Regex::new(r"\s+").unwrap();
 
-    clear_screen();
-
     let _listener = stream
         .add_local_listener_with_user_data(data)
         .param_changed(move |_, user_data, id, param| {
@@ -208,22 +204,6 @@ pub fn listen(
                         // Detect message characters:
                         if tone_detected != last_signal_state {
                             decoder.signal_event(duration as u16, last_signal_state);
-                            let mut msg = decoder.message.as_str().to_string();
-                            msg = whitespace_regex.replace_all(&msg, " ").to_string();
-
-                            if !msg.is_empty() {
-                                clear_screen();
-                                // Print all previous messages with timestamp
-                                for logged_msg in &user_data.message_log {
-                                    log_message(logged_msg);
-                                }
-                                // Print the current message as it is received:
-                                if output_morse {
-                                    println!("{}", text_to_morse(&msg));
-                                } else {
-                                    println!("{msg}");
-                                }
-                            }
 
                             last_signal_change = now;
                             last_signal_state = tone_detected;
@@ -242,11 +222,6 @@ pub fn listen(
                                 msg = decoder.message.as_str().to_string();
                                 msg = whitespace_regex.replace_all(&msg, " ").to_string();
 
-                                clear_screen();
-                                // Print all previous messages with timestamp
-                                for logged_msg in &user_data.message_log {
-                                    log_message(logged_msg);
-                                }
                                 // Get the current timestamp
                                 let timestamp =
                                     Local::now().format("%y-%m-%d %H:%M:%S %p").to_string();
@@ -258,7 +233,7 @@ pub fn listen(
                                 if output_morse {
                                     m.content = text_to_morse(&m.content);
                                 }
-                                log_message(&m);
+                                println!("[{}] > {}", m.timestamp, m.content);
 
                                 // Push the complete message into the log
                                 user_data.message_log.push(m);

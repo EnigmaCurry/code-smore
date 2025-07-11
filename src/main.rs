@@ -1,29 +1,41 @@
 use clap_complete::shells::Shell;
 
+mod alsa;
 mod cli;
 mod credits;
 mod fecr_quiz;
+mod fft;
+mod file;
 mod filter;
 mod gpio;
 mod message;
 mod morse;
 mod pipewire;
 mod prelude;
-mod term;
+mod rts;
+mod transceive;
 
 use is_terminal::IsTerminal;
 use prelude::*;
+use rodio::cpal::traits::HostTrait;
+use rodio::DeviceTrait;
 use std::io::BufRead;
 use std::u8;
 
 use crate::pipewire::ensure_pipewire;
 
+use crate::rts::ensure_rts_deasserted;
 use crate::{credits::print_credits, morse::text_to_morse};
-
 fn main() {
     let mut cmd = cli::app();
     let matches = cmd.clone().get_matches();
-    let rts_port = matches.get_one::<String>("rts").map(|s| s.as_str());
+    let device = matches.get_one::<String>("device").map(|s| s.as_str());
+    let ptt_rts_port = matches.get_one::<String>("ptt-rts").map(|s| s.as_str());
+    let cw_rts_port = matches.get_one::<String>("cw-rts").map(|s| s.as_str());
+    let rigctl_port = matches.get_one::<String>("rigctl").map(|s| s.as_str());
+    let rigctl_model = matches
+        .get_one::<String>("rigctl-model")
+        .map(|s| s.as_str());
 
     // Configure logging:
     let log_level = if matches.get_flag("verbose") {
@@ -40,6 +52,14 @@ fn main() {
         .format_timestamp(None)
         .init();
     debug!("logging initialized.");
+
+    // Initialize RTS state:
+    if let Some(rts_port) = ptt_rts_port {
+        let _ = ensure_rts_deasserted(rts_port);
+    }
+    if let Some(rts_port) = cw_rts_port {
+        let _ = ensure_rts_deasserted(rts_port);
+    }
 
     // Print help if no subcommand is given:
     if matches.subcommand_name().is_none() {
@@ -99,20 +119,55 @@ fn main() {
                 *randomize,
                 *calibration_mode,
                 *baseline,
-                rts_port,
+                ptt_rts_port,
+                cw_rts_port,
+                rigctl_port,
+                rigctl_model,
             );
             0
         }
         Some(("test-sound", _sub_matches)) => {
-            let player = morse::MorsePlayer::new();
+            let player;
+            match device {
+                Some(dev) => {
+                    player = morse::MorsePlayer::new_with_device(dev)
+                        .expect("Could not initialize player")
+                }
+                None => player = morse::MorsePlayer::new(),
+            }
+
             let message = "If sound is working, you should hear this test message now.";
             println!("{}", message);
             println!("{}", text_to_morse(message));
-            player.play(message, dot_duration, tone_freq, rts_port);
+            player.play(
+                message,
+                dot_duration,
+                tone_freq,
+                ptt_rts_port,
+                cw_rts_port,
+                rigctl_port,
+                rigctl_model,
+            );
+            0
+        }
+        Some(("list-devices", _sub_matches)) => {
+            let host = rodio::cpal::default_host();
+
+            println!("--- Output Devices ---");
+            for device in host.output_devices().expect("could not get output devices") {
+                println!(" - {}", device.name().expect("no device name"));
+            }
             0
         }
         Some(("send", sub_matches)) => {
-            let player = morse::MorsePlayer::new();
+            let player;
+            match device {
+                Some(dev) => {
+                    player = morse::MorsePlayer::new_with_device(dev)
+                        .expect("Could not initialize player")
+                }
+                None => player = morse::MorsePlayer::new(),
+            }
             let morse = sub_matches
                 .get_one::<bool>("morse")
                 .expect("Missing --morse arg default");
@@ -133,8 +188,22 @@ fn main() {
                                 // stdin is already morse encoded, convert it to text:
                                 println!("{}", morse::code_to_text(&line));
                                 if sound {
-                                    player.play_morse(&line, dot_duration, tone_freq, rts_port);
-                                    player.play_gap(dot_duration * 14, rts_port);
+                                    player.play_morse(
+                                        &line,
+                                        dot_duration,
+                                        tone_freq,
+                                        ptt_rts_port,
+                                        cw_rts_port,
+                                        rigctl_port,
+                                        rigctl_model,
+                                    );
+                                    player.play_gap(
+                                        dot_duration * 14,
+                                        ptt_rts_port,
+                                        cw_rts_port,
+                                        rigctl_port,
+                                        rigctl_model,
+                                    );
                                 } else if gpio {
                                     player.gpio_morse(&line, dot_duration, gpio_pin);
                                     player.gpio_gap(dot_duration * 14, gpio_pin);
@@ -143,8 +212,22 @@ fn main() {
                                 // Encode stdin as morse code:
                                 println!("{}", morse::text_to_morse(&line));
                                 if sound {
-                                    player.play(&line, dot_duration, tone_freq, rts_port);
-                                    player.play_gap(dot_duration * 14, rts_port);
+                                    player.play(
+                                        &line,
+                                        dot_duration,
+                                        tone_freq,
+                                        ptt_rts_port,
+                                        cw_rts_port,
+                                        rigctl_port,
+                                        rigctl_model,
+                                    );
+                                    player.play_gap(
+                                        dot_duration * 14,
+                                        ptt_rts_port,
+                                        cw_rts_port,
+                                        rigctl_port,
+                                        rigctl_model,
+                                    );
                                 } else if gpio {
                                     player.gpio(&line, dot_duration, gpio_pin);
                                     player.gpio_gap(dot_duration * 14, gpio_pin);
@@ -157,8 +240,22 @@ fn main() {
                                 player.gpio_gap(dot_duration * 14, gpio_pin);
                             } else {
                                 // Sound is the default:
-                                player.play_morse(&line, dot_duration, tone_freq, rts_port);
-                                player.play_gap(dot_duration * 14, rts_port);
+                                player.play_morse(
+                                    &line,
+                                    dot_duration,
+                                    tone_freq,
+                                    ptt_rts_port,
+                                    cw_rts_port,
+                                    rigctl_port,
+                                    rigctl_model,
+                                );
+                                player.play_gap(
+                                    dot_duration * 14,
+                                    ptt_rts_port,
+                                    cw_rts_port,
+                                    rigctl_port,
+                                    rigctl_model,
+                                );
                             }
                         } else {
                             // Convert stdin into morse and play it:
@@ -167,8 +264,22 @@ fn main() {
                                 player.gpio_gap(dot_duration * 14, gpio_pin);
                             } else {
                                 // Sound is the default:
-                                player.play(&line, dot_duration, tone_freq, rts_port);
-                                player.play_gap(dot_duration * 14, rts_port);
+                                player.play(
+                                    &line,
+                                    dot_duration,
+                                    tone_freq,
+                                    ptt_rts_port,
+                                    cw_rts_port,
+                                    rigctl_port,
+                                    rigctl_model,
+                                );
+                                player.play_gap(
+                                    dot_duration * 14,
+                                    ptt_rts_port,
+                                    cw_rts_port,
+                                    rigctl_port,
+                                    rigctl_model,
+                                );
                             }
                         }
                     }
@@ -186,35 +297,24 @@ fn main() {
                 .get_one::<bool>("listen")
                 .copied()
                 .unwrap_or(false);
+            let threshold = sub_matches
+                .get_one::<f32>("threshold")
+                .copied()
+                .unwrap_or(0.3);
+            let bandwidth = sub_matches
+                .get_one::<f32>("bandwidth")
+                .copied()
+                .unwrap_or(200.0);
             if gpio {
                 // Receive from GPIO
                 gpio::gpio_receive(dot_duration, gpio_pin, *morse)
                     .expect("Unhandled SIGINT or other fault");
             } else if listen {
                 // Receive from audio device
-                let device = sub_matches
-                    .get_one::<String>("device")
-                    .map(|s| s.to_string());
                 let file = sub_matches.get_one::<String>("file").map(|s| s.to_string());
-                let threshold = sub_matches
-                    .get_one::<f32>("threshold")
-                    .copied()
-                    .unwrap_or(0.3);
-                let bandwidth = sub_matches
-                    .get_one::<f32>("bandwidth")
-                    .copied()
-                    .unwrap_or(200.0);
-                match (&device, &file) {
-                    (None, Some(_file)) => {
+                match &file {
+                    Some(_file) => {
                         error!("TODO. Audio file input is not supported yet.");
-                        std::process::exit(1);
-                    }
-                    (Some(_device), None) => {
-                        error!("TODO. Setting the input device name is not supported yet. Leave this setting unset to use the default device.");
-                        std::process::exit(1);
-                    }
-                    (Some(_device), Some(_file)) => {
-                        error!("Cannot specify --device and --file simultaneousy.");
                         std::process::exit(1);
                     }
                     _ => {}
@@ -227,12 +327,48 @@ fn main() {
                     error!("Sorry, the listen feature is only supported on Linux right now.");
                     std::process::exit(1);
                 }
+            } else if let Some(file_name) = sub_matches
+                .get_one::<String>("file")
+                .filter(|s| !s.is_empty())
+            {
+                file::listen_to_file(
+                    file_name,
+                    tone_freq,
+                    bandwidth,
+                    threshold,
+                    dot_duration,
+                    *morse,
+                    None,
+                )
+                .expect("alsa::listen_with_alsa() failed");
+            } else if let Some(device_name) = sub_matches
+                .get_one::<String>("device")
+                .filter(|s| !s.is_empty())
+            {
+                #[cfg(target_os = "linux")]
+                {
+                    alsa::listen_with_alsa(
+                        device_name,
+                        tone_freq,
+                        bandwidth,
+                        threshold,
+                        dot_duration,
+                        *morse,
+                        None,
+                    )
+                    .expect("alsa::listen_with_alsa() failed");
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    error!("Audio device input is not supported on this platform.");
+                    std::process::exit(1);
+                }
             } else {
                 // No valid input source specified
                 eprintln!("Error: You must specify an input method. Try one of:");
                 eprintln!("  --gpio <PIN>");
                 eprintln!("  --listen");
-                eprintln!("  --device <name> (not implemented yet)");
+                eprintln!("  --device <name>");
                 eprintln!("  --file <path>   (not implemented yet)");
                 println!();
                 cmd.find_subcommand_mut("receive")
@@ -242,6 +378,26 @@ fn main() {
                 println!();
                 std::process::exit(1);
             }
+            0
+        }
+        Some(("transceive", sub_matches)) => {
+            let device = sub_matches
+                .get_one::<String>("device")
+                .expect("ALSA device required");
+            let threshold = sub_matches
+                .get_one::<f32>("threshold")
+                .copied()
+                .unwrap_or(0.03);
+            transceive::run_transceiver(
+                tone_freq,
+                dot_duration,
+                device,
+                threshold,
+                ptt_rts_port,
+                cw_rts_port,
+                rigctl_port,
+                rigctl_model,
+            );
             0
         }
         Some(("completions", sub_matches)) => {

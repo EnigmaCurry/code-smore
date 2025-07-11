@@ -31,7 +31,6 @@ pub fn gpio_receive(
     let mut last_signal_state = !pin.is_low(); // Normally high logic
     let mut message_pending = false; // Tracks if there's a pending message to finalize
 
-    clear_screen();
     info!("Receiving morse code from GPIO pin {pin_number} - Press Ctrl-C to stop.");
 
     loop {

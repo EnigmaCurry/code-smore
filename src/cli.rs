@@ -55,13 +55,49 @@ pub fn app() -> Command {
                 ),
         )
         .arg(
-            Arg::new("rts")
-                .long("rts")
+            Arg::new("device")
+                .long("device")
+                .global(true)
+                .num_args(1)
+                .value_name("DEVICE")
+                .help("Choose an explicit sound device instead of the system default")
+        )
+        .arg(
+            Arg::new("ptt-rts")
+                .long("ptt-rts")
                 .global(true)
                 .num_args(1)
                 .value_name("PORT")
-                .conflicts_with("gpio")
-                .help("Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)")
+                .conflicts_with_all(["gpio", "rigctl"])
+                .help("Assert RTS on this serial port to trigger radio's PTT (e.g. /dev/ttyUSB0)")
+        )
+        .arg(
+            Arg::new("cw-rts")
+                .long("cw-rts")
+                .global(true)
+                .num_args(1)
+                .value_name("PORT")
+                .conflicts_with_all(["gpio"])
+                .help("Assert RTS on this serial port to key radio's CW (e.g. /dev/ttyUSB0)")
+        )
+        .arg(
+            Arg::new("rigctl")
+                .long("rigctl")
+                .global(true)
+                .num_args(1)
+                .value_name("DEVICE")
+                .requires("rigctl-model")
+                .conflicts_with_all(["gpio", "ptt-rts"])
+                .help("Control radio PTT via Hamlib rigctl device (e.g. /dev/ttyACM0)")
+        )
+        .arg(
+            Arg::new("rigctl-model")
+                .long("rigctl-model")
+                .global(true)
+                .num_args(1)
+                .requires("rigctl")
+                .value_name("ID")
+                .help("Hamlib rig model ID (e.g. 3085 for IC-705, see `rigctl -l`)")
         )
         .arg(
             Arg::new("gpio")
@@ -69,6 +105,7 @@ pub fn app() -> Command {
                 .global(true)
                 .value_parser(clap::value_parser!(u8))
                 .value_name("pin-number")
+                .conflicts_with_all(["ptt-rts", "rigctl"])
                 .help(
                     "Use GPIO instead of the sound device (select GPIO pin number)",
                 ),
@@ -141,6 +178,9 @@ pub fn app() -> Command {
         .subcommand(Command::new("test-sound").about(
             "Test that sound is working",
         ))
+        .subcommand(Command::new("list-devices").about(
+            "List all system sound devices",
+        ))
         .subcommand(
             Command::new("send")
                 .about(
@@ -203,7 +243,7 @@ pub fn app() -> Command {
                                 })
                         })
                         .help(
-                            "Minimal signal value threshold [0.0..1.0]",
+                            "Bandpass filter frequency in Hz.",
                         ),
                 )
                 .arg(
@@ -227,6 +267,37 @@ pub fn app() -> Command {
                         .help("Receive morse code from an audio device")
                         .conflicts_with_all(["file", "listen"]),
                 ),
+        )
+        .subcommand(
+            Command::new("transceive")
+                .about("Interactive half-duplex send/receive session")
+                .arg(
+                    Arg::new("device")
+                        .short('d')
+                        .long("device")
+                        .required(true)
+                        .value_name("ALSA_DEVICE")
+                        .help("ALSA device to receive morse from"),
+                )
+                .arg(
+                    Arg::new("threshold")
+                        .short('t')
+                        .long("threshold")
+                        .value_parser(|v: &str| {
+                            v.parse::<f32>()
+                                .map_err(|_| String::from("Threshold must be a valid floating-point number"))
+                                .and_then(|val| {
+                                    if (0.0..=1.0).contains(&val) {
+                                        Ok(val)
+                                    } else {
+                                        Err(String::from("Threshold must be between 0.0 and 1.0"))
+                                    }
+                                })
+                        })
+                        .help(
+                            "Minimal signal value threshold [0.0..1.0]",
+                        ),
+                )
         )
         .subcommand(
             Command::new("completions")

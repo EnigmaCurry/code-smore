@@ -16,14 +16,24 @@ If you do not wish to install the precompiled version (or none is available for 
 
 ```
 ## Make sure to install rust and cargo dependencies:
-## https://rustup.rs/
+## See https://rustup.rs/
 
-## (Linux only:) Install the device dependencies:
-## sudo apt install libasound2-dev libudev-dev
+## (Linux only:) Install the build dependencies:
+# sudo apt install build-essential libasound2-dev libudev-dev
 
-## Download and Build code-smore source code:
+## Download and Build code-smore source code, with the default features (ALSA only):
 cargo install code-smore
+
+## Or build it with optional features enabled, e.g., pipewire support added:
+# sudo apt install pkg-config libpipewire-0.3-dev libclang-dev
+cargo install code-smore --features pipewire
+
+## Install optional rigctl dependencies:
+# sudo apt install libhamlib-utils
 ```
+
+Note: pipewire libraries are only required for the `receive --listen`
+option, otherwise ALSA is used for everything else.
 
 ## Usage
 
@@ -34,23 +44,28 @@ $ code-smore
 Usage: code-smore [OPTIONS] [COMMAND]
 
 Commands:
-  fecr-quiz   Start the Fast Enough Character Recognition quiz
-  test-sound  Test that sound is working
-  send        Send text from stdin as morse code
-  receive     Receive morse code from an audio device, audio file, or GPIO.
-  credits     Prints license information for all dependencies
-  help        Print this message or the help of the given subcommand(s)
+  fecr-quiz           Start the Fast Enough Character Recognition quiz
+  test-sound          Test that sound is working
+  list-sound-devices  List all system sound devices
+  send                Send text from stdin as morse code
+  receive             Receive morse code from desktop audio monitor, a specific audio device, an audio file, or GPIO.
+  credits             Prints license information for all dependencies
+  help                Print this message or the help of the given subcommand(s)
 
 Options:
-      --dot <DOT_DURATION>  Sets the dot duration in milliseconds [default: 60]
-      --wpm <WPM>           Sets the speed in words per minute [default: 20]
-      --tone <TONE_FREQ>    Sets the tone frequency in Hz [default: 440.0]
-      --text                Output text rather than sound
-      --sound               Output sound in addition to the --text option
-      --rts <PORT>          Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)
-      --gpio <pin-number>   Use GPIO instead of the sound device (select GPIO pin number)
-  -h, --help                Print help
-  -V, --version             Print version
+      --dot <DOT_DURATION>     Sets the dot duration in milliseconds [default: 60]
+      --wpm <WPM>              Sets the speed in words per minute [default: 20]
+      --tone <TONE_FREQ>       Sets the tone frequency in Hz [default: 440.0]
+      --text                   Output text rather than sound
+      --sound                  Output sound in addition to the --text option
+      --sound-device <DEVICE>  Choose an explicit sound device instead of the system default
+      --rts <PORT>             Assert RTS on this serial port while playing sound (e.g. /dev/ttyUSB0)
+      --rigctl <DEVICE>        Control radio PTT via Hamlib rigctl device (e.g. /dev/ttyACM0)
+      --rigctl-model <ID>      Hamlib rig model ID (e.g. 3085 for IC-705, see `rigctl -l`)
+      --gpio <pin-number>      Use GPIO instead of the sound device (select GPIO pin number)
+  -h, --help                   Print help
+  -V, --version                Print version
+
 ```
 
 Note that `--dot` and `--wpm` are mutually exclusive, you may only set
@@ -200,6 +215,53 @@ Please note that the the signal must be communication grade with no
 interference. If you have any other sound playing in the background,
 it will negatively affect the signal copy. Filtering signals has not
 been implemented yet.
+
+## Send and receive morse code via radio
+
+If you have a radio with a USB port that provides sound and rig
+control (PTT), or if you have an external sound card like the
+[digirig](https://digirig.net/product/digirig-mobile/) to interface
+with any other radio, you can use code-smore as a morse code
+transceiver to send and receive CW communication over the airwaves.
+
+For example:
+
+```
+code-smore transceive \
+  --device hw:0,0 \
+  --tone 500 \
+  --ptt-rts /dev/ttyACM0 \
+  --cw-rts /dev/ttyACM1
+```
+
+The `transceive` command requires the following information:
+
+ * The sound card to use. Find your device by running `arecord -l`.
+   The format you need to specify is the prefix `hw:` + CARD + `,` +
+   DEVICE. (e.g., `--device hw:0,0`).
+ * One of the options for controlling the radio transmitter:
+   `--ptt-rts` or `--rigctl PORT --rigctl-model MODEL`.
+ * For transmitting mourse code AUDIO over FM, no other option is
+   required. To transmit CW, you need to provide a mechanism that keys
+   your radio: `--cw-rts PORT`.
+
+In the previous example, the exact arguments used to connect to an
+IC-705 are shown. In the radio settings, you can set the following
+options to setup the two serial devices `/dev/ttyACM0` and
+`/dev/ttyACM1` that are exposed by the USB connection:
+
+ * On the IC-705,
+ * Press the `Menu` button.
+ * Press `Set`.
+ * Press `Connectors`.
+ * Press `USB SEND/Keyring`.
+ * Press `USB Send`, choose `USB (A) RTS` to setup the RTS line of
+   `/dev/ttyACM0` to be the PTT function that triggers the radio
+   transmitter.
+ * Press `USB Keying (CW)`, choose `USB (B) RTS` to setup the RTS line
+   of `/dev/ttyACM1` to be the CW key toggle of the radio.
+ * Plug in the USB, tune your radio, check your antenna, and make sure
+   you are in `CW` mode.
 
 ## Receive morse code from GPIO
 

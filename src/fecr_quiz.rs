@@ -24,7 +24,10 @@ pub fn start_quiz(
     randomize: bool,
     calibration: bool,
     baseline: u32,
-    rts_port: Option<&str>,
+    ptt_rts_port: Option<&str>,
+    cw_rts_port: Option<&str>,
+    rigctl_port: Option<&str>,
+    rigctl_model: Option<&str>,
 ) {
     let paragraph = match calibration {
         true => "Calibration process.\n\nThis process will measure your native keyboard typing skills to calculate your personal output latency. A series of characters will be displayed at the same time a tone is played. Enter the characters as fast as you can.\n".to_string(),
@@ -39,7 +42,15 @@ pub fn start_quiz(
     if calibration {
     } else {
         println!("Initializing audio (VVV) ...");
-        player.play("VVV", dot_duration, tone_freq, rts_port);
+        player.play(
+            "VVV",
+            dot_duration,
+            tone_freq,
+            ptt_rts_port,
+            cw_rts_port,
+            rigctl_port,
+            rigctl_model,
+        );
     }
 
     if calibration {
@@ -102,7 +113,10 @@ pub fn start_quiz(
         randomize,
         calibration,
         if calibration { 0 } else { baseline },
-        rts_port,
+        ptt_rts_port,
+        cw_rts_port,
+        rigctl_port,
+        rigctl_model,
     );
     print_results(
         &results,
@@ -129,7 +143,10 @@ fn reaction_time_quiz(
     randomize: bool,
     calibration: bool,
     baseline: u32,
-    rts_port: Option<&str>,
+    ptt_rts_port: Option<&str>,
+    cw_rts_port: Option<&str>,
+    rigctl_port: Option<&str>,
+    rigctl_model: Option<&str>,
 ) -> QuizResult {
     let mut prompts = Vec::new();
     let mut responses = Vec::new();
@@ -178,13 +195,23 @@ fn reaction_time_quiz(
         }
 
         if calibration {
-            player.play_nonblocking_tone(dot_duration, tone_freq, rts_port);
+            player.play_nonblocking_tone(
+                dot_duration,
+                tone_freq,
+                ptt_rts_port,
+                cw_rts_port,
+                rigctl_port,
+                rigctl_model,
+            );
         } else {
             player.play(
                 &target_letter.to_string(),
                 dot_duration,
                 tone_freq,
-                rts_port,
+                ptt_rts_port,
+                cw_rts_port,
+                rigctl_port,
+                rigctl_model,
             );
         }
 
